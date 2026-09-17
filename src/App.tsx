@@ -1,6 +1,8 @@
 import { useRotationState } from './state/useRotationState'
-import { EMPTY_STATE } from './state/schema'
+import { EMPTY_STATE, normalizeSlots } from './state/schema'
 import NameList from './components/NameList'
+import RecurrenceBuilder from './components/RecurrenceBuilder'
+import SlotList from './components/SlotList'
 import ShareBar from './components/ShareBar'
 import Toolbar from './components/Toolbar'
 
@@ -47,6 +49,35 @@ export default function App() {
             update((prev) => ({ ...prev, groupSize }))
           }}
         />
+
+        <div className="when-panel">
+          <RecurrenceBuilder
+            slotCount={state.slots.length}
+            onGenerate={(slots) => {
+              // Append and de-duplicate; generate never wipes what is there (PLAN §5).
+              // Discrete action, so it earns a history entry and the back button undoes it.
+              update(
+                (prev) => ({ ...prev, slots: normalizeSlots([...prev.slots, ...slots]) }),
+                'push',
+              )
+            }}
+            onAddSlot={(slot) => {
+              update((prev) => ({
+                ...prev,
+                slots: normalizeSlots([...prev.slots, slot]),
+              }))
+            }}
+          />
+          <SlotList
+            slots={state.slots}
+            onSlotsChange={(slots, discrete) => {
+              update(
+                (prev) => ({ ...prev, slots: normalizeSlots(slots) }),
+                discrete === true ? 'push' : 'replace',
+              )
+            }}
+          />
+        </div>
       </div>
 
       <ShareBar url={ready ? shareUrl : ''} textTable={state.names.join('\n')} />

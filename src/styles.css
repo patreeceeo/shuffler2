@@ -193,3 +193,88 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Recurrence builder ---------------------------------------------------- */
+
+.sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.sentence input,
+.sentence select,
+.sentence button {
+  margin: 0;
+  width: auto;
+}
+
+.sentence input[type='number'] {
+  width: 4.5rem;
+}
+
+.sentence input[type='time'] {
+  width: 8rem;
+}
+
+.sentence input[type='date'] {
+  width: 10.5rem;
+}
+
+.when-panel hr {
+  margin: 1.25rem 0;
+}
+
+/* Slots ----------------------------------------------------------------- */
+
+.slot-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.slot-list-head h3 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.slot-list-head button {
+  margin: 0;
+  width: auto;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.slot-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.slot-row {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.slot-row input {
+  margin: 0;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.slot-row input[type='date'] {
+  flex: 1 1 9rem;
+}
+
+.slot-row input[type='time'] {
+  flex: 0 0 7rem;
+}
