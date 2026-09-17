@@ -30,7 +30,7 @@ redirect hack is needed.
 
 > ### One repo setting is required, and it is easy to miss
 >
-> **Settings → Pages → Source must be set to "GitHub Actions"** — *not* "Deploy from a
+> **Settings → Pages → Source must be set to "GitHub Actions"** — _not_ "Deploy from a
 > branch". The workflow will otherwise run green and deploy nothing.
 
 If this is served from a custom domain, add a `CNAME` file to `public/` so the domain

@@ -34,7 +34,7 @@ v1 is ~150 lines of vanilla JS + Pico CSS: a textarea of items, an integer
   integer `n ∈ [0, len!)` and decoded to a permutation via a Lehmer-style algorithm.
   Elegant, and it makes the URL tiny — but it breaks down at 19 items (19! exceeds
   `Number.MAX_SAFE_INTEGER`, and the float division in `integerToPermutation` loses
-  precision before that), and it cannot represent a *manual* reorder without
+  precision before that), and it cannot represent a _manual_ reorder without
   round-tripping through a search for the matching index. v2 stores the name array in
   its displayed order instead: one source of truth, arbitrary length, manual reorder and
   shuffle are the same operation. See §2.
@@ -57,15 +57,15 @@ v1 is ~150 lines of vanilla JS + Pico CSS: a textarea of items, an integer
 
 ## 2. Decisions
 
-| Decision | Choice |
-| --- | --- |
-| Stack | Vite + React + TypeScript + React Compiler 1.0 |
-| Styling | Pico CSS v2 (as v1) + a little local CSS |
-| State transport | Compressed blob in the URL fragment (`#s=…`), native `CompressionStream` |
-| Date helpers | Recurrence generator + manual add/edit/remove |
-| Name ↔ date pairing | Positional round-robin, `groupSize` names per slot |
-| Name order | Stored explicitly; manual drag-reorder and shuffle both just rewrite it |
-| Hosting | Static, GitHub Pages, deployed by Actions; `base: './'` so it runs at any path |
+| Decision            | Choice                                                                         |
+| ------------------- | ------------------------------------------------------------------------------ |
+| Stack               | Vite + React + TypeScript + React Compiler 1.0                                 |
+| Styling             | Pico CSS v2 (as v1) + a little local CSS                                       |
+| State transport     | Compressed blob in the URL fragment (`#s=…`), native `CompressionStream`       |
+| Date helpers        | Recurrence generator + manual add/edit/remove                                  |
+| Name ↔ date pairing | Positional round-robin, `groupSize` names per slot                             |
+| Name order          | Stored explicitly; manual drag-reorder and shuffle both just rewrite it        |
+| Hosting             | Static, GitHub Pages, deployed by Actions; `base: './'` so it runs at any path |
 
 **Why the fragment and not the query string.** The fragment is never sent to the server,
 so no one's chore chart lands in an access log, and the page behaves identically on
@@ -81,14 +81,14 @@ router, no redirect dance. See §9.
 Cost: v1's URLs were human-readable and v2's will not be. §3.6 keeps a readable escape
 hatch.
 
-**What positional round-robin implies.** The schedule is a *derived value*, never stored.
+**What positional round-robin implies.** The schedule is a _derived value_, never stored.
 With `g = groupSize`, slot `i` gets `names[(i*g + j) % names.length]` for `j ∈ [0, g)`.
-The name list *is* the rotation order, which makes the mental model obvious and keeps the
+The name list _is_ the rotation order, which makes the mental model obvious and keeps the
 URL small.
 
 **Manual reorder vs. shuffle.** Both are a write to `names`: drag-reorder is an array
 move, shuffle is a permutation. Shuffling therefore discards a manual arrangement, which
-is the agreed behavior — a manual reorder is a *correction*, not a pin. (If pinning is
+is the agreed behavior — a manual reorder is a _correction_, not a pin. (If pinning is
 ever wanted, it needs a separate `locked: number[]` field and a shuffle that permutes only
 the unlocked positions. Out of scope for v1 of v2.)
 
@@ -99,14 +99,14 @@ the unlocked positions. Out of scope for v1 of v2.)
 ### 3.1 In-memory state
 
 ```ts
-type Slot = string;            // floating local wall-clock, "YYYY-MM-DDTHH:mm"
+type Slot = string // floating local wall-clock, "YYYY-MM-DDTHH:mm"
 
 interface RotationState {
-  v: 2;
-  title: string;               // "" when unset
-  names: string[];             // display order == rotation order
-  slots: Slot[];               // kept sorted ascending
-  groupSize: number;           // names per slot, >= 1, default 1
+  v: 2
+  title: string // "" when unset
+  names: string[] // display order == rotation order
+  slots: Slot[] // kept sorted ascending
+  groupSize: number // names per slot, >= 1, default 1
 }
 ```
 
@@ -144,14 +144,14 @@ shape. Never renumber; only append.
 
 ### 3.3 Reading v1 links
 
-v2 should open any URL v1 could produce. On mount, if there is no `#s=` but there *is* a
+v2 should open any URL v1 could produce. On mount, if there is no `#s=` but there _is_ a
 `?items=` query string:
 
 1. `items = params.getAll('items')`, `r = Number(params.get('randomizer') ?? 0)`.
 2. Reproduce v1's `integerToPermutation(r, items)` — port the function verbatim into
    `lib/legacy.ts`, guard `items.length <= 18` — and use the result as `names`.
 3. `groupSize = 2` (v1's hardcoded value).
-4. Generate slots with v1's rule: start of the week *after* `rotationStart` (Sunday-based),
+4. Generate slots with v1's rule: start of the week _after_ `rotationStart` (Sunday-based),
    then weekly, `ceil(items.length / 2)` occurrences, at 00:00.
 5. `replaceState` into the new `#s=` form and drop the query string.
 
@@ -175,7 +175,7 @@ Monday at 9am" should read as 9am to everyone who opens the link — right for a
 chore chart, wrong for a cross-timezone on-call roster. Documented limitation; a `tz` field
 can be appended to the tuple later without breaking old links.
 
-**Consequence for the generator:** compute recurrence with *calendar* arithmetic — increment
+**Consequence for the generator:** compute recurrence with _calendar_ arithmetic — increment
 the day/month fields, keep `hh:mm` fixed — never by adding `7*24*60*60*1000` to a timestamp.
 The naive approach drifts an hour twice a year. v1 got this right; don't regress it. Write
 the DST test first. And format dates from local fields, never `toISOString()` (§1).
@@ -229,7 +229,7 @@ src/
 
 ### 4.2 Shuffle
 
-Fisher–Yates over `crypto.getRandomValues`. No seed is stored — the shuffled order *is* the
+Fisher–Yates over `crypto.getRandomValues`. No seed is stored — the shuffled order _is_ the
 state, so the link reproduces it exactly. Reject a permutation identical to the current one
 when `names.length > 1`; a shuffle that visibly does nothing reads as a broken button.
 
@@ -271,8 +271,8 @@ build (§10). Duplicate names are allowed,
 not an error — someone may genuinely take two slots per cycle. `people per slot` is v1's
 group-size control, finally enabled.
 
-**When panel.** The recurrence builder reads as a sentence: *every [N] [day/week/month]
-[on Mon] at [09:00] starting [date] for [N] times*. Defaults on first load: weekly, the next
+**When panel.** The recurrence builder reads as a sentence: _every [N] [day/week/month]
+[on Mon] at [09:00] starting [date] for [N] times_. Defaults on first load: weekly, the next
 upcoming Monday, 09:00, 12 occurrences. `Generate` **appends** and de-duplicates — it never
 silently wipes what is there. Manual slots below it add, edit, delete individually. Slots
 stay sorted ascending at all times.
@@ -293,24 +293,24 @@ explains itself. Any edit replaces the demo entirely.
 **M0 — Scaffold and deploy.** Vite + React + TS with `base: './'`, Pico CSS bundled from
 npm, ESLint/Prettier, Vitest, `public/.nojekyll`, and the Pages workflow from §9 (plus the
 Settings → Pages → Source = "GitHub Actions" switch). Do this first, before any feature
-work: a pipeline that already deploys turns every later milestone into a push. *Done when
-a blank page is live at its public URL.*
+work: a pipeline that already deploys turns every later milestone into a push. _Done when
+a blank page is live at its public URL._
 
 **M1 — Codec + legacy.** `schema.ts`, `codec.ts`, `legacy.ts`, tests. No UI. Round-trip
 property tests, malformed-input tests, a size benchmark asserting the 20×52 case stays under
-500 chars, and fixture tests decoding real v1 URLs. *Done when the codec can be trusted for
-the rest of the build.*
+500 chars, and fixture tests decoding real v1 URLs. _Done when the codec can be trusted for
+the rest of the build._
 
 **M2 — State hook + names.** `useRotationState`, names panel, share bar. No dates yet.
-*Done when typing names updates the URL and pasting that URL into a fresh tab restores them.*
+_Done when typing names updates the URL and pasting that URL into a fresh tab restores them._
 
 **M3 — Dates.** `dates.ts` with calendar arithmetic and DST tests, the recurrence builder,
-manual slot editing. *Done when "every Monday at 9am ×12" yields twelve 9am slots across a
-DST boundary.*
+manual slot editing. _Done when "every Monday at 9am ×12" yields twelve 9am slots across a
+DST boundary._
 
 **M4 — Schedule + shuffle.** `schedule.ts`, the schedule table with `groupSize`, the shuffle
-button with pushState undo and row animation, drag + keyboard reorder. *Done when
-back/forward walks shuffle history.*
+button with pushState undo and row animation, drag + keyboard reorder. _Done when
+back/forward walks shuffle history._
 
 **M5 — Polish.** Responsive layout, keyboard flow, focus management, URL-length meter,
 corrupted-link recovery, dark mode (Pico gives most of it), `<title>` from the rotation
@@ -423,7 +423,7 @@ Tests and lint run before the build, so a red build never reaches Pages.
   replaced.
 - **Deploying over v1's path.** If v2 replaces v1 at `zzt64.com/shuffler/`, every v1 link
   ever shared lands on v2 — which is exactly what the legacy decoder in §3.3 is for. That
-  argues for shipping M1's `legacy.ts` *before* the first public deploy. If v2 goes to a
+  argues for shipping M1's `legacy.ts` _before_ the first public deploy. If v2 goes to a
   new path instead, leave v1 in place and add a link between them.
 - **Caching.** Vite content-hashes asset filenames, so `assets/*` can cache forever while
   `index.html` must not. Pages sets its own headers and does not let you override them;
@@ -452,17 +452,17 @@ Researched September 2026. Sizes are minified + gzipped.
 
 ### 10.1 Adopt
 
-| Library | Size | Replaces | Why |
-| --- | --- | --- | --- |
-| Native `CompressionStream` | 0 kB | fflate / lz-string | Baseline in every engine since 2023 (Safari 16.4, Firefox 113, Chrome 80). Async, which the debounced write path absorbs. |
-| **Valibot** | 1.4 kB | hand-rolled `validate()` | Decoding a URL someone else sent is untrusted-input parsing. `safeParse` gives the never-throw contract of §3.4 directly, and the schema documents the wire format. Zod v4 is ~5 kB, `zod/mini` 3.9 kB — the ecosystem integrations they buy (tRPC, RHF, Drizzle) are all irrelevant here. |
-| **@dnd-kit/sortable** | ~6 kB | hand-rolled drag + Alt+↑/↓ | Actively maintained, ~2.8M weekly downloads. `KeyboardSensor` ships the full keyboard path and screen-reader announcements, which is the part that would otherwise get skipped. Pragmatic drag-and-drop (Atlassian, ~3.5 kB) is smaller but leaves accessibility to you. **Do not use `react-beautiful-dnd`** — Atlassian stopped maintaining it in 2022 and React 19 compatibility is not guaranteed. |
-| **@formkit/auto-animate** | <3 kB | hand-rolled FLIP | One ref per animated list. Respects `prefers-reduced-motion` by default, which Motion and Motion One both leave to you. Motion (ex-Framer Motion) is 30 kB for an effect used on exactly two lists. |
-| **React Compiler 1.0** | 0 kB runtime | `useMemo`/`useCallback` discipline | Stable since October 2025. Auto-memoization matters here because the schedule re-derives on every keystroke. Two setup traps below. |
+| Library                    | Size         | Replaces                           | Why                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------- | ------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Native `CompressionStream` | 0 kB         | fflate / lz-string                 | Baseline in every engine since 2023 (Safari 16.4, Firefox 113, Chrome 80). Async, which the debounced write path absorbs.                                                                                                                                                                                                                                                                              |
+| **Valibot**                | 1.4 kB       | hand-rolled `validate()`           | Decoding a URL someone else sent is untrusted-input parsing. `safeParse` gives the never-throw contract of §3.4 directly, and the schema documents the wire format. Zod v4 is ~5 kB, `zod/mini` 3.9 kB — the ecosystem integrations they buy (tRPC, RHF, Drizzle) are all irrelevant here.                                                                                                             |
+| **@dnd-kit/sortable**      | ~6 kB        | hand-rolled drag + Alt+↑/↓         | Actively maintained, ~2.8M weekly downloads. `KeyboardSensor` ships the full keyboard path and screen-reader announcements, which is the part that would otherwise get skipped. Pragmatic drag-and-drop (Atlassian, ~3.5 kB) is smaller but leaves accessibility to you. **Do not use `react-beautiful-dnd`** — Atlassian stopped maintaining it in 2022 and React 19 compatibility is not guaranteed. |
+| **@formkit/auto-animate**  | <3 kB        | hand-rolled FLIP                   | One ref per animated list. Respects `prefers-reduced-motion` by default, which Motion and Motion One both leave to you. Motion (ex-Framer Motion) is 30 kB for an effect used on exactly two lists.                                                                                                                                                                                                    |
+| **React Compiler 1.0**     | 0 kB runtime | `useMemo`/`useCallback` discipline | Stable since October 2025. Auto-memoization matters here because the schedule re-derives on every keystroke. Two setup traps below.                                                                                                                                                                                                                                                                    |
 
 **React Compiler setup traps.** `@vitejs/plugin-react` v6 dropped internal Babel for oxc, so
 the compiler needs `@rolldown/plugin-babel` alongside it, and the babel plugin must be listed
-*before* `react()`:
+_before_ `react()`:
 
 ```ts
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
@@ -478,7 +478,7 @@ export default defineConfig({
 ```
 
 And the lint rules now live in **`eslint-plugin-react-hooks`** (`recommended-latest` preset),
-*not* the older `eslint-plugin-react-compiler` that most blog posts still name. Turn the lint
+_not_ the older `eslint-plugin-react-compiler` that most blog posts still name. Turn the lint
 rule on in CI before enabling the compiler, so Rules-of-React violations surface as lint
 errors rather than as compiled-away bugs.
 
@@ -486,7 +486,7 @@ Total added: **~10 kB**.
 
 ### 10.2 One real decision: Temporal
 
-`Temporal.PlainDateTime` is *precisely* the type §3.5 describes — a wall-clock date-time with
+`Temporal.PlainDateTime` is _precisely_ the type §3.5 describes — a wall-clock date-time with
 no zone — and `.add({ weeks: 1 })` is DST-correct by construction rather than by remembering
 to use `setDate`. It would delete most of `lib/dates.ts` and make the floating-time decision
 enforced by the type system instead of by a comment.
@@ -494,11 +494,11 @@ enforced by the type system instead of by a comment.
 Status: shipped in Chrome 144 (early 2026) and Firefox 139 (May 2025); **Safari is still
 Technology Preview / behind a flag**. So it needs a polyfill, and the polyfills are not small:
 
-| Polyfill | Gzipped |
-| --- | --- |
+| Polyfill                           | Gzipped |
+| ---------------------------------- | ------- |
 | `temporal-polyfill` (FullCalendar) | 19.7 kB |
-| `temporal-polyfill-lite` | 17.9 kB |
-| `@js-temporal/polyfill` | 45.4 kB |
+| `temporal-polyfill-lite`           | 17.9 kB |
+| `@js-temporal/polyfill`            | 45.4 kB |
 
 **Recommendation:** use Temporal, with the polyfill behind a runtime gate so Chrome and
 Firefox pay nothing:
@@ -512,14 +512,14 @@ extra complexity. If 20 kB for Safari users feels wrong for a tool this small, t
 alternative is ~30 lines of hand-rolled calendar arithmetic and zero dependencies — v1 already
 proved that works. Either is defensible; the gated polyfill is better for maintainability.
 
-Note: `date-fns`, Luxon and Day.js are *not* alternatives here. All three are `Date`-based and
+Note: `date-fns`, Luxon and Day.js are _not_ alternatives here. All three are `Date`-based and
 none offers a floating wall-clock type, so they solve a problem this app does not have while
 reintroducing the one it does.
 
 ### 10.3 An architectural option worth a look: RRULE
 
 RFC 5545 already has exact vocabulary for "a recurring series plus manual additions and
-removals": `RRULE` + `RDATE` + `EXDATE`. Storing *that* instead of an expanded slot list would
+removals": `RRULE` + `RDATE` + `EXDATE`. Storing _that_ instead of an expanded slot list would
 make the URL dramatically smaller (one rule, not 52 timestamps), give correct month-end
 behaviour for free, and make the M6 `.ics` export nearly a no-op.
 
@@ -534,8 +534,8 @@ exceptions, "every other Tuesday except holidays").
 
 ### 10.4 Declined
 
-- **nuqs** — the obvious reach for "URL state in React", and the wrong tool: it is a *search
-  params* manager. As of v2.10 it will *preserve* a hash but will not store state in one. It
+- **nuqs** — the obvious reach for "URL state in React", and the wrong tool: it is a _search
+  params_ manager. As of v2.10 it will _preserve_ a hash but will not store state in one. It
   also assumes one parser per key, where this app has a single opaque blob. No fit.
 - **Motion / Framer Motion** — 30 kB (15 kB with `LazyMotion`) for what AutoAnimate does in 3.
 - **`ics` / `ical-generator`** — for M6. A handful of `VEVENT`s is ~30 lines of string building;
