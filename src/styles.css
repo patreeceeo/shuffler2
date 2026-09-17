@@ -1,4 +1,195 @@
 :root {
   --pico-font-family:
     system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --shuffler-gap: 1rem;
+}
+
+.app {
+  padding-block: 1.5rem 6rem;
+}
+
+/* Toolbar -------------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: var(--shuffler-gap);
+}
+
+.toolbar .title-input {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.toolbar button {
+  margin: 0;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+/* Panels --------------------------------------------------------------- */
+
+.panels {
+  display: grid;
+  gap: calc(var(--shuffler-gap) * 1.5);
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 62rem) {
+  .panels {
+    grid-template-columns: minmax(14rem, 1fr) minmax(15rem, 1fr) minmax(18rem, 1.4fr);
+  }
+}
+
+.panels section > h2 {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pico-muted-color);
+  margin-bottom: 0.75rem;
+}
+
+/* Names ---------------------------------------------------------------- */
+
+.name-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  touch-action: none;
+}
+
+.name-row input[type='text'] {
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.name-row .row-number {
+  min-width: 1.4em;
+  text-align: right;
+  color: var(--pico-muted-color);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+}
+
+.drag-handle,
+.row-delete {
+  margin: 0;
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.5rem;
+  line-height: 1;
+  background: transparent;
+  border-color: transparent;
+  color: var(--pico-muted-color);
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.row-delete:hover,
+.row-delete:focus {
+  color: var(--pico-del-color, #b3261e);
+}
+
+.group-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.group-size input {
+  margin: 0;
+  width: 5rem;
+}
+
+.hint {
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+}
+
+/* Share bar ------------------------------------------------------------ */
+
+.share-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: calc(var(--shuffler-gap) * 2);
+  padding: 0.6rem 0.75rem;
+  background: var(--pico-card-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+}
+
+.share-url {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.share-url input {
+  margin: 0;
+  font-family: var(--pico-font-family-monospace, monospace);
+  font-size: 0.8rem;
+}
+
+.share-bar button {
+  margin: 0;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.char-count {
+  font-size: 0.8rem;
+  color: var(--pico-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.warn {
+  color: var(--pico-del-color, #b3261e);
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+}
+
+.notice p {
+  margin-bottom: 0.5rem;
+}
+
+.notice button {
+  margin: 0;
+  width: auto;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

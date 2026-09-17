@@ -21,7 +21,7 @@ export default defineConfig({
     // Temporal, both of which are plain platform/globals work. Component tests opt in
     // with a `// @vitest-environment jsdom` docblock.
     environment: 'node',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/test/setup.ts', './src/test/dom-setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
   },
 })
