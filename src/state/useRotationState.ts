@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { blobFromHash, decode, encode } from './codec'
 import { decodeLegacy } from './legacy'
-import { EMPTY_STATE, type RotationState } from './schema'
+import { EMPTY_STATE, isEmptyRotation, type RotationState } from './schema'
 
 /**
  * The only code in the app that touches `location` (PLAN §4.1).
@@ -72,6 +72,23 @@ export function useRotationState(): RotationStore {
     if (!job) return
     pending.current = null
     const mine = ++generation.current
+
+    // An empty rotation writes no hash: Reset (and deleting the last name) should hand
+    // back a clean URL, not `#s=<blob encoding nothing>`. lastWritten becomes null to
+    // match what blobFromHash reports for a bare URL, so the echo guard still holds.
+    if (isEmptyRotation(job.state)) {
+      lastWritten.current = null
+      const bare = currentUrlWithBlob('')
+      setShareUrl(bare)
+      const clear = job.mode === 'push' ? 'pushState' : 'replaceState'
+      try {
+        window.history[clear](null, '', bare)
+      } catch {
+        /* address bar stays stale; the app still works */
+      }
+      return
+    }
+
     void encode(job.state).then((blob) => {
       if (generation.current !== mine) return
       lastWritten.current = blob

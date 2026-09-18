@@ -70,6 +70,17 @@ export function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
 }
 
+/**
+ * An empty rotation has nothing to share, so it gets no hash at all (see `flush` in
+ * useRotationState). That keeps one invariant true in both directions: no hash <=> empty,
+ * which is what makes Reset actually return you to a clean URL.
+ */
+export function isEmptyRotation(state: RotationState): boolean {
+  return (
+    state.names.length === 0 && state.slots.length === 0 && state.title.trim().length === 0
+  )
+}
+
 export const EMPTY_STATE: RotationState = Object.freeze({
   v: 2,
   title: '',

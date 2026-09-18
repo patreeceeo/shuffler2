@@ -291,6 +291,47 @@ describe('App end to end (jsdom)', () => {
     expect(rows[1]).toContain('Linus, Barbara')
   })
 
+  it('Reset clears the hash instead of leaving an empty blob behind', async () => {
+    const user = userEvent.setup()
+    const seeded: RotationState = {
+      v: 2,
+      title: 'Bins',
+      names: ['Ada', 'Grace'],
+      slots: ['2026-09-21T09:00'],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(seeded)}`)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+    })
+
+    await user.click(screen.getByRole('button', { name: /Reset/ }))
+    await settle()
+    // No hash <=> empty rotation, in both directions.
+    expect(window.location.hash).toBe('')
+    expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
+  })
+
+  it('deleting the last name and date also leaves a clean URL', async () => {
+    const user = userEvent.setup()
+    const solo: RotationState = {
+      v: 2,
+      title: '',
+      names: ['Ada'],
+      slots: [],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(solo)}`)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+    })
+    await user.click(screen.getByRole('button', { name: 'Delete Ada' }))
+    await settle()
+    expect(window.location.hash).toBe('')
+  })
+
   it('sets the document title from the rotation title', async () => {
     const titled: RotationState = {
       v: 2,
