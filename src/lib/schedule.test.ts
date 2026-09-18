@@ -179,4 +179,19 @@ describe('toTextTable', () => {
     const s = state({ names: [], slots: [] })
     expect(toTextTable(s, derive(s), (slot) => slot)).toContain('no dates or no names')
   })
+
+  it('carries the rotation link when it is given one', () => {
+    const s = state({ title: 'Dish duty' })
+    const url = 'https://zzt64.com/shuffler2/#s=BLOB'
+    expect(toTextTable(s, derive(s), (slot) => slot, url)).toContain(
+      `made with Shuffler2: ${url}`,
+    )
+  })
+
+  it('omits the link line rather than printing a bare label', () => {
+    // Called with no url at all, and called before the first encode produces one.
+    const s = state({ title: 'Dish duty' })
+    expect(toTextTable(s, derive(s), (slot) => slot)).not.toContain('made with')
+    expect(toTextTable(s, derive(s), (slot) => slot, '')).not.toContain('made with')
+  })
 })

@@ -424,7 +424,7 @@ describe('App end to end (jsdom)', () => {
     window.history.replaceState(null, '', `/#s=${await encode(titled)}`)
     render(<App />)
     await waitFor(() => {
-      expect(document.title).toBe('Bin night — Shuffler')
+      expect(document.title).toBe('Bin night — Shuffler2')
     })
   })
 })

@@ -153,7 +153,7 @@ export default function App() {
         <Tabs.Panel value="share" className="builder-panel">
           <ShareBar
             url={liveUrl}
-            textTable={toTextTable(state, schedule, formatSlot)}
+            textTable={toTextTable(state, schedule, formatSlot, liveUrl)}
           />
         </Tabs.Panel>
 

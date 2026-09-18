@@ -73,6 +73,14 @@ export function toTextTable(
   state: RotationState,
   schedule: Schedule,
   formatSlot: (slot: Slot) => string,
+  /**
+   * The rotation link, threaded in from the component that owns it rather than read off
+   * `location` here. Two reasons: this module is pure and runs under the node test
+   * environment, where there is no `location` at all; and the hash write is debounced
+   * ~300ms (§4.1), so `location.href` lags the state the table was built from and can copy
+   * a link to the *previous* rotation. Optional — omitted or empty means no link line.
+   */
+  url = '',
 ): string {
   const lines: string[] = []
   if (state.title.length > 0) lines.push(state.title, '')
@@ -87,6 +95,6 @@ export function toTextTable(
   })
   lines.push('')
   lines.push(schedule.tallies.map((t) => `${t.name} ${String(t.count)}`).join(' · '))
-  lines.push(`made with Shuffler2: ${location.href}`)
+  if (url.length > 0) lines.push(`made with Shuffler2: ${url}`)
   return lines.join('\n')
 }
