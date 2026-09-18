@@ -647,3 +647,38 @@ One library added beyond §10: `@dnd-kit/modifiers` (~1 kB, same family) for
 **Still open:** the Playwright specs in `e2e/smoke.spec.ts` are written and typecheck, but no
 browser has executed them — `playwright install chromium` is blocked by the egress allowlist in
 the build environment. The app has not yet been rendered in a real browser at all.
+
+### 11.1 Link-preview card and local assets
+
+Pasting a rotation link into Slack or iMessage now shows a preview card. Two constraints
+shaped how:
+
+- **`og:image` must be an absolute URL** — crawlers do not resolve relative ones, which sits
+  awkwardly with `base: './'` and deploying at any path. Resolved with Vite's HTML env
+  substitution: `index.html` contains `%VITE_SITE_URL%og-card.jpg`, and `.env` sets
+  `VITE_SITE_URL=https://zzt64.com/shuffler2/`. A fork or preview deploy overrides the
+  variable instead of editing meta tags.
+- **The card is a static JPEG, not the GIF.** Slack, Twitter/X, Facebook and iMessage all
+  render a single frame of an animated GIF, and all reject multi-megabyte images — so an
+  animated card would be megabytes that never animate and usually never load.
+
+The toolbar mascot is now served from `src/assets/mascot.gif` and imported (so Vite hashes it
+and rewrites the URL for any `base`) rather than hotlinked from Tenor. **The app now makes no
+third-party requests at all**, which restores the "nothing here reaches a server" property
+that the hotlink had dented.
+
+Asset sizing, from the 640×360 / 273-frame / **22 MB** original:
+
+| Asset | Spec | Size |
+| --- | --- | --- |
+| `public/og-card.jpg` | static frame, 1200×630 | 52 kB |
+| `src/assets/mascot.gif` | 160×90, 10fps, 3s, 32 colours | 208 kB |
+| `public/favicon.png` | single frame | 65 kB |
+
+A whole deploy is now **828 kB**, against roughly 23 MB with the original GIF in `public/`.
+None of it counts toward the JS budget, which is unchanged.
+
+> **Outstanding:** `public/hardstyle.gif` was committed before it was removed, so the 22 MB
+> blob is still in git history and every clone still pays for it. Removing it needs a history
+> rewrite (`git filter-repo` or BFG) plus a force-push — worth doing before the repo is
+> shared or made public, and not something to do casually afterwards.

@@ -1,4 +1,4 @@
-
+import mascotUrl from '../assets/mascot.gif'
 
 interface Props {
   title: string
@@ -9,25 +9,21 @@ interface Props {
 }
 
 /**
- * Purely decorative mascot (a hardstyle shuffle loop), hotlinked from Tenor. This is the
- * 220x124 variant the share page declares as its og:image, not the 498x280 or 640x360 ones
+ * Purely decorative mascot (a hardstyle shuffle loop), served from our own assets so the
+ * app makes no third-party requests at all. Imported rather than referenced from public/,
+ * so Vite hashes it for cache-busting and rewrites the URL for whatever `base` we deploy at.
  *
- * Four things keep it from becoming a liability:
- *  - width/height are fixed, so it reserves its box and cannot shift the toolbar as it loads
- *  - onError hides it, so a changed or blocked Tenor URL leaves a gap rather than a broken
- *    image icon in the middle of the top bar
+ * It is a deliberately small derivative of the 640x360 original: 160x90, 10fps, 3s, 32
+ * colours, ~208KB. It renders 48px tall, so that is ~1.9x pixel density -- the full-size
+ * source was 22MB, which is two orders of magnitude of bytes for no visible difference.
+ *
+ *  - alt="" + aria-hidden keep it out of the accessibility tree
  *  - CSS hides it under prefers-reduced-motion: a looping GIF is moving content that cannot
  *    be paused (WCAG 2.2.2), and since it carries no information, hiding it costs nothing
- *  - alt="" + aria-hidden keep it out of the accessibility tree entirely
  *
- * It is the app's only third-party runtime request. If that ever matters more than the
- * joke, Tenor also publishes mp4/webm variants, and a muted looping <video> would be both
- * smaller and actually pausable.
+ * No width/height attributes and no onError, so the toolbar shifts a little when it lands.
+ * Both are two lines away if that becomes annoying.
  */
-const MASCOT_SRC =
-  'hardstyle.gif'
-
-
 export default function Toolbar({
   title,
   onTitleChange,
@@ -35,12 +31,11 @@ export default function Toolbar({
   onReset,
   canShuffle,
 }: Props) {
-
   return (
     <div className="toolbar">
       <img
         className="mascot"
-        src={MASCOT_SRC}
+        src={mascotUrl}
         alt=""
         aria-hidden="true"
         decoding="async"

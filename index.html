@@ -5,10 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Shuffler</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
     <meta
       name="description"
-      content="Build and share a rotation — chores, on-call, dish duty. No account, no backend: the whole rotation lives in the link."
+      content="Build and share a chore rotation. No account, no backend: the whole rotation lives in the link."
     />
+
+    <!--
+      Link-preview card. Two things to know before editing:
+
+      1. og:image MUST be an absolute URL — crawlers do not resolve relative ones. %VITE_SITE_URL%
+         is substituted by Vite at build time from .env, so a fork or a preview deploy can
+         override it without touching this file. It must end in a slash.
+      2. It is a STATIC JPEG, not the animated GIF. Slack, Twitter/X, Facebook and iMessage
+         all render one frame of a GIF anyway, and they reject multi-megabyte images outright,
+         so an animated card would be 22MB that never animates and usually never loads.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Shuffler" />
+    <meta property="og:title" content="Shuffler — build and share a rotation" />
+    <meta
+      property="og:description"
+      content="Build and share a chore rotation. No account, no backend: the whole rotation lives in the link."
+    />
+    <meta property="og:url" content="%VITE_SITE_URL%" />
+    <meta property="og:image" content="%VITE_SITE_URL%og-card.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="hardstyle shuffle dance" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>
