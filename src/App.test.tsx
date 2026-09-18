@@ -6,6 +6,7 @@ import App from './App'
 import { encode, decode, blobFromHash } from './state/codec'
 import { HASH_DEBOUNCE_MS } from './state/useRotationState'
 import type { RotationState } from './state/schema'
+import { URL_WARN_LENGTH } from './components/ShareBar'
 
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   return setTimeout(() => {
@@ -355,6 +356,61 @@ describe('App end to end (jsdom)', () => {
     // Help is prose, not a builder, so it unmounts when you leave it.
     await user.click(screen.getByRole('tab', { name: /Names/ }))
     expect(screen.queryByRole('heading', { name: /How this works/i })).toBeNull()
+  })
+
+  it('the share link lives in the Share tab and reproduces the state', async () => {
+    const user = userEvent.setup()
+    const seeded: RotationState = {
+      v: 2,
+      title: 'Bins',
+      names: ['Ada', 'Grace'],
+      slots: ['2026-09-21T09:00'],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(seeded)}`)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+    })
+
+    // Not on screen until you ask for it.
+    expect(screen.queryByRole('textbox', { name: 'Shareable link' })).toBeNull()
+
+    await user.click(screen.getByRole('tab', { name: /Share/ }))
+    const field = screen.getByRole('textbox', { name: 'Shareable link' })
+    expect(field).toHaveValue(window.location.href)
+    const decoded = await decode(blobFromHash(new URL(field.getAttribute('value') ?? '').hash))
+    expect(decoded).toEqual(seeded)
+  })
+
+  it('warns from the tab strip when the link gets too long to send', async () => {
+    // Deliberately high-entropy: 120 copies of "Person number N" deflate down to ~470
+    // characters, nowhere near the threshold. Only incompressible names make a long link.
+    let seed = 1
+    const noise = (n: number) =>
+      Array.from({ length: n }, () => {
+        seed = (seed * 48271) % 2147483647
+        return seed.toString(36)
+      }).join('')
+    const many: RotationState = {
+      v: 2,
+      title: '',
+      names: Array.from({ length: 180 }, () => noise(3)),
+      slots: [],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(many)}`)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name 1')).toHaveValue(many.names[0])
+    })
+    expect(window.location.href.length).toBeGreaterThan(URL_WARN_LENGTH)
+    // The warning is reachable without opening the panel that contains it.
+    expect(
+      within(screen.getByRole('tab', { name: /Share/ })).getByLabelText(
+        /link may be too long/i,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('sets the document title from the rotation title', async () => {

@@ -74,6 +74,8 @@ test('build a rotation, share the link, and reopen it in a fresh context', async
     .toBe(afterShuffle.join('|'))
 
   // The share link reproduces the rotation exactly in a fresh context.
+  // The link field lives in the Share tab now.
+  await page.getByRole('tab', { name: /Share/ }).click()
   const shareUrl = await page
     .getByRole('textbox', { name: 'Shareable link' })
     .inputValue()

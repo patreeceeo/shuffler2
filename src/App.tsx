@@ -8,7 +8,7 @@ import { formatSlot } from './lib/dates'
 import NameList from './components/NameList'
 import RecurrenceBuilder from './components/RecurrenceBuilder'
 import ScheduleTable from './components/ScheduleTable'
-import ShareBar from './components/ShareBar'
+import ShareBar, { URL_WARN_LENGTH } from './components/ShareBar'
 import SlotList from './components/SlotList'
 import Toolbar from './components/Toolbar'
 import Help from './components/Help'
@@ -17,6 +17,12 @@ export default function App() {
   const { state, ready, corrupted, dismissCorrupted, update, shareUrl } =
     useRotationState()
   const schedule = derive(state)
+  const liveUrl = ready ? shareUrl : ''
+  /**
+   * The length warning is the one thing that must not be buried by moving Share into a tab:
+   * a link long enough to be mangled has to announce itself from the tab strip.
+   */
+  const urlTooLong = liveUrl.length > URL_WARN_LENGTH
 
   // <title> follows the rotation title, so a tab full of shared links stays legible.
   // In an effect, not during render: writing document.title while rendering is a
@@ -74,7 +80,15 @@ export default function App() {
           <Tabs.Tab value="dates" className="builder-tab">
             Dates <span className="tab-count">{state.slots.length}</span>
           </Tabs.Tab>
-          {/* No count badge: Help is not one of the two lists being built. */}
+          <Tabs.Tab value="share" className="builder-tab">
+            Share
+            {urlTooLong && (
+              <span className="tab-warn" role="img" aria-label="link may be too long">
+                ⚠
+              </span>
+            )}
+          </Tabs.Tab>
+          {/* No count badge: neither Share nor Help is one of the lists being built. */}
           <Tabs.Tab value="help" className="builder-tab">
             Help
           </Tabs.Tab>
@@ -132,16 +146,22 @@ export default function App() {
           </div>
         </Tabs.Panel>
 
+        {/*
+          Not keepMounted: the only state in here is the transient "Copied" flash, and
+          letting it unmount resets that, which is what you want on re-entry.
+        */}
+        <Tabs.Panel value="share" className="builder-panel">
+          <ShareBar
+            url={liveUrl}
+            textTable={toTextTable(state, schedule, formatSlot)}
+          />
+        </Tabs.Panel>
+
         {/* Static prose, so there is no form state to preserve — let it unmount. */}
         <Tabs.Panel value="help" className="builder-panel">
           <Help />
         </Tabs.Panel>
       </Tabs.Root>
-
-      <ShareBar
-        url={ready ? shareUrl : ''}
-        textTable={toTextTable(state, schedule, formatSlot)}
-      />
     </main>
   )
 }

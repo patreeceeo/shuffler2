@@ -45,7 +45,7 @@ export default function ShareBar({ url, textTable }: Props) {
   const tooLong = url.length > URL_WARN_LENGTH
 
   return (
-    <footer className="share-bar">
+    <div className="share-bar">
       <label className="share-url">
         <span className="visually-hidden">Shareable link</span>
         <input ref={inputRef} type="text" readOnly value={url} spellCheck={false} />
@@ -80,6 +80,6 @@ export default function ShareBar({ url, textTable }: Props) {
           </>
         )}
       </span>
-    </footer>
+    </div>
   )
 }

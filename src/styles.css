@@ -5,7 +5,8 @@
 }
 
 .app {
-  padding-block: 1.5rem 6rem;
+  /* The 6rem tail was clearance for the old sticky share footer; it is in a tab now. */
+  padding-block: 1.5rem 3rem;
 }
 
 /* Toolbar -------------------------------------------------------------- */
@@ -121,14 +122,12 @@ section > h2 {
 
 /* Share bar ------------------------------------------------------------ */
 
+/* Lives inside the Share tab now, so it is neither sticky nor a page footer. */
 .share-bar {
-  position: sticky;
-  bottom: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  margin-top: calc(var(--shuffler-gap) * 2);
   padding: 0.6rem 0.75rem;
   background: var(--pico-card-background-color);
   border: 1px solid var(--pico-muted-border-color);
@@ -459,4 +458,10 @@ table.schedule td {
   .toolbar .mascot {
     display: none;
   }
+}
+
+/* The length warning has to be visible from the tab strip, not only inside the panel. */
+.tab-warn {
+  margin-left: 0.4rem;
+  color: var(--pico-del-color, #b3261e);
 }

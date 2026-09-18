@@ -246,7 +246,7 @@ button, output updates as you type, exactly as v1 did.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  [ Rotation title …            ]   ⟳ Shuffle    ⤫ Reset    │
+│  [gif] [ Rotation title …      ]   ⟳ Shuffle    ⤫ Reset    │
 ├────────────────────────────────────────────────────────────┤
 │ SCHEDULE                                                   │
 │   Mon Sep 21, 9:00 — Ada          Mon Oct  5, 9:00 — Linus │
@@ -260,7 +260,7 @@ button, output updates as you type, exactly as v1 did.
 │  │ + add name│                                             │
 │  │ people per slot: [1]                                    │
 ├────────────────────────────────────────────────────────────┤
-│ 🔗 https://…/#s=N4Igb…  [Copy]   412 chars                 │
+│  └───────────┴────────────┴─ SHARE ─┴─ HELP ─┘             │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -278,7 +278,13 @@ button, output updates as you type, exactly as v1 did.
 > kept-mounted panel is still `hidden`, i.e. out of both the layout and the accessibility
 > tree.
 >
-> A third tab, **Help**, carries the prose that explains the link-as-document model, the
+> **Share** and **Help** joined them as third and fourth tabs. Moving the link field off
+> the page behind a tab buries the one thing that must not be buried — the length warning —
+> so the Share tab shows a ⚠ in its own label once the link passes the mangling threshold,
+> reachable without opening the panel. Neither tab is `keepMounted`: Share's only state is
+> the transient "Copied" flash, which is better reset on re-entry, and Help is static prose.
+>
+> The Help tab carries the prose that explains the link-as-document model, the
 > round-robin rule, shuffle-vs-manual-order, and the floating-time decision — the things a
 > first-time visitor cannot infer from an empty page now that there is no demo data. It
 > takes no count badge and is not `keepMounted`: it is static prose with no form state to
@@ -596,8 +602,15 @@ clean, 163 tests green, build clean on a second run over an existing `dist/`,
 `dist/index.html` references `./assets/…` relatively, and the Temporal polyfill lands in its
 own lazily-imported chunk rather than the main bundle.
 
-Measured bundle, gzipped: **125.8 kB** on Chrome/Firefox (native Temporal, polyfill never
-fetched), **145.7 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
+Measured bundle, gzipped: **126.1 kB** on Chrome/Firefox (native Temporal, polyfill never
+fetched), **146.0 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
+
+The toolbar carries a decorative GIF hotlinked from Tenor (the 220×124 variant its share
+page declares as `og:image`). It costs nothing in the bundle but it is the app's **only
+third-party runtime request**, which slightly dents the "nothing here reaches a server"
+property — worth knowing, and worth replacing with a bundled copy or Tenor's mp4/webm
+variant if that ever matters more than the joke. It is hidden under
+`prefers-reduced-motion`, since a looping GIF is unpausable moving content (WCAG 2.2.2).
 
 > Base UI's Tabs cost **+11.2 kB gzipped**, not the ~2.4 kB its comparisons quote — the
 > quoted figure is the Tabs parts alone, excluding Base UI's shared internals, which a
