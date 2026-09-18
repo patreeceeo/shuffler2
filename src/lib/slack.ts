@@ -1,171 +1,84 @@
-import type { RotationState, Slot } from '../state/schema'
 import type { Schedule } from './schedule'
 
 /**
- * Slack message building — pure string work, and deliberately nothing more.
+ * Generates Slack `/remind` commands for a rotation — pure string work, nothing more.
  *
- * This module exists because a *real* Slack integration is impossible from a static page
- * (PLAN §12), so the app's job is to make the copy-and-paste correct:
+ * Why commands you paste rather than an integration: the Slack Web API sends no CORS
+ * headers, so a static page cannot call it; `reminders.add` has been retired/degraded since
+ * 2023; and this app's whole state is a link people forward, so it can hold no token. A
+ * slash command the user runs themselves needs none of that. There is no fetch() here.
  *
- * - The Slack Web API sends no CORS headers, so `chat.postMessage` and `users.list` are
- *   unreachable from the browser. There is no fetch() anywhere in this file.
- * - `reminders.add` has been retired/degraded since 2023, so even with a token the app
- *   could not create the recurring reminder for you.
- * - The app stores no token and no webhook URL. Its entire state is a link people forward,
- *   and a secret in that link is a secret handed to everyone who receives it.
+ * Shape: `/remind [#channel] [what] [when]`. Slack's own docs are explicit that you
+ * CANNOT set a reminder for another person, so these target the channel and @-mention
+ * whoever is up — which is also how a chore rotation usually wants to read.
  *
- * `mrkdwn` is NOT Markdown. The differences this module has to get right:
- *   bold   `*one asterisk*`     (not `**two**`)
- *   italic `_underscores_`
- *   link   `<https://x|label>`  (not `[label](https://x)`)
- *   escape `&`, `<`, `>` as `&amp;`, `&lt;`, `&gt;` in any user-supplied text.
+ * Dates use American m/d/yyyy and `h:mmam`, the format Slack documents for best parsing.
+ * The slot is a floating local wall-clock string, so this splits it rather than going
+ * through Date — no timezone can be introduced and no `toISOString()` can creep in.
  */
 
-/** Bold in mrkdwn is a single asterisk each side. `**x**` renders the asterisks. */
-export function bold(text: string): string {
-  return `*${text}*`
+/** Broadcast tokens that would ping an entire channel if a name happened to spell one. */
+const BROADCASTS = new Set(['channel', 'here', 'everyone'])
+
+/**
+ * One name, ready to sit in a command. Names are assumed to be Slack usernames, so they
+ * get an `@`, but:
+ *  - a newline would end the command early and forge a second one, so whitespace collapses
+ *  - a leading `@` the user typed themselves is not doubled
+ *  - `@channel`/`@here`/`@everyone` are defanged, or a crafted link could make the person
+ *    pasting these ping their whole workspace
+ */
+export function toHandle(name: string): string {
+  const flat = name.replace(/\s+/g, ' ').trim().replace(/^@+/, '')
+  if (flat.length === 0) return ''
+  if (BROADCASTS.has(flat.toLowerCase())) return flat
+  return `@${flat}`
 }
 
-/** Italic is underscores; mrkdwn has no `*x*`-means-italic rule. */
-export function italic(text: string): string {
-  return `_${text}_`
+/** `#general` from whatever the user typed: no leading #, no spaces, no empty string. */
+export function normalizeChannel(raw: string): string {
+  return raw.trim().replace(/^#+/, '').replace(/\s+/g, '-')
 }
 
-/** Links are angle-bracketed with a pipe, not `[label](url)`. */
-export function link(url: string, label: string): string {
-  return `<${url}|${label}>`
+/** "2026-09-21T09:00" -> "9/21/2026 at 9:00am", Slack's documented parsing format. */
+export function formatWhen(slot: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(slot)
+  if (!match) return slot
+  const [, y, mo, d, h, mi] = match as unknown as [string, string, string, string, string, string]
+  const hour24 = Number(h)
+  const suffix = hour24 < 12 ? 'am' : 'pm'
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
+  return `${String(Number(mo))}/${String(Number(d))}/${y} at ${String(hour12)}:${mi}${suffix}`
+}
+
+export interface RemindOptions {
+  /** Channel the reminders post in, as typed by the user (with or without a #). */
+  channel: string
+  /** Rotation title, used as the thing being reminded about. */
+  title: string
 }
 
 /**
- * Escape the three characters Slack treats as control characters in mrkdwn.
- *
- * `&` first, or the ampersands of the later replacements get double-escaped.
- *
- * Escaping `&` is not cosmetic, it is what closes the hole: a name arriving from a
- * hand-crafted link can contain the literal text `&lt;!channel&gt;` or
- * `&lt;https://evil.example|Payroll&gt;`. Escape only `<` and `>` and Slack's parser turns
- * those entities back into `<` and `>`, reassembling exactly the broadcast-ping or
- * disguised-link syntax the escaping was supposed to prevent. All three, or none.
+ * One `/remind` per slot. Returns lines, not a blob, so the caller can join them and the
+ * tests can assert per-command.
  */
-export function escapeMrkdwn(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export function toRemindCommands(schedule: Schedule, options: RemindOptions): string[] {
+  if (schedule.empty) return []
+  const channel = normalizeChannel(options.channel)
+  if (channel.length === 0) return []
+  const what = options.title.replace(/\s+/g, ' ').trim()
+  return schedule.assignments.map((assignment) => {
+    const handles = assignment.names.map(toHandle).filter((h) => h.length > 0).join(' ')
+    const subject = what.length > 0 ? `your turn: ${what}` : 'your turn'
+    return `/remind #${channel} ${handles} ${subject} ${formatWhen(assignment.slot)}`
+  })
 }
 
-/**
- * Collapse newlines, tabs and other control whitespace to single spaces.
- *
- * `MAX_NAME` is the only limit the schema puts on a name, so a crafted link can put a
- * newline inside one. Left alone it breaks the aligned table's columns and — worse — lets
- * a name forge its own line in the message, e.g. a second "link" line pointing somewhere
- * else. One name is one line, always.
- */
-export function flattenWhitespace(text: string): string {
-  return text.replace(/\s+/g, ' ').trim()
-}
-
-/**
- * Make a fence unrepresentable in user-supplied text.
- *
- * Every run of two or more backticks collapses to one, so a three-backtick run cannot
- * survive however the pieces are later concatenated or padded. A lone backtick in a name
- * survives and is inert.
- *
- * This applies to user text *everywhere* in the message, not only inside the ``` block, and
- * both directions matter:
- *
- *  - Inside the block: code blocks do not nest and the first ``` closes the block, so a
- *    name containing one breaks out and the rest of the table renders as ordinary mrkdwn.
- *  - After the block: a ``` in the tally line opens a *new* block that swallows everything
- *    below it — including the link line, which stops being a clickable link. A name could
- *    therefore quietly strip the one thing the message exists to carry.
- */
-export function codeBlockSafe(text: string): string {
-  return text.replace(/`{2,}/g, '`')
-}
-
-/** User-supplied text, ready to drop anywhere in the message. */
-function plain(text: string): string {
-  return codeBlockSafe(escapeMrkdwn(flattenWhitespace(text)))
-}
-
-export interface SlackMessageOptions {
-  /**
-   * Prefix every assigned name with `@`. Off by default: turning it on pings real people.
-   *
-   * It is a *typed* `@handle`, which Slack's own composer linkifies when the text matches a
-   * handle in the workspace. The proper `<@U01ABCDEF>` ID form is not available to us —
-   * resolving a name to a member ID needs `users.list`, which needs a token and a server
-   * (see the header comment). So this is a best-effort nudge, not a resolved mention.
-   */
-  mentions?: boolean
-  /** The rotation link. Omitted or empty means no link line. */
-  url?: string
-}
-
-const LINK_LABEL = 'Open or edit this rotation'
-
-/**
- * Build a message ready to paste into Slack's composer or a Workflow Builder message step.
- *
- * Two shapes, because of a Slack rule with no way around it: `@handle` inside a ``` block
- * is not linkified. So mentions-off gets the aligned table in a code block (columns line
- * up, monospace), and mentions-on gets one plain line per slot outside any block (the
- * mentions work, the alignment is gone). See `SlackPanel` for how that is explained.
- */
-export function toSlackMessage(
-  state: RotationState,
-  schedule: Schedule,
-  formatSlot: (slot: Slot) => string,
-  options: SlackMessageOptions = {},
-): string {
-  const mentions = options.mentions === true
-  const url = options.url ?? ''
-
-  const title = flattenWhitespace(state.title)
-  const lines: string[] = [bold(title.length > 0 ? escapeMrkdwn(title) : 'Rotation')]
-
-  if (schedule.empty) {
-    lines.push('', italic('Nothing to post yet: this rotation has no names or no dates.'))
-  } else {
-    lines.push('')
-    const dates = schedule.assignments.map((a) => formatSlot(a.slot))
-
-    if (mentions) {
-      // Outside a code block: mentions linkify, columns do not align.
-      schedule.assignments.forEach((assignment, i) => {
-        // Comma-separated, not space-separated: a name can be "Ada Lovelace", and
-        // "@Ada Lovelace @Grace Hopper" gives no clue where one person ends.
-        const who = assignment.names.map((name) => `@${plain(name)}`).join(', ')
-        lines.push(`${plain(dates[i]!)} — ${who}`)
-      })
-    } else {
-      // Inside a code block: columns align, and `@` would be inert anyway.
-      const cells = dates.map((date) => plain(date))
-      const width = Math.max(...cells.map((cell) => cell.length))
-      lines.push('```')
-      schedule.assignments.forEach((assignment, i) => {
-        const who = assignment.names.map((name) => plain(name)).join(', ')
-        lines.push(`${cells[i]!.padEnd(width)}  ${who}`)
-      })
-      lines.push('```')
-    }
-
-    // Tallies stay plain even with mentions on: one ping per person is a nudge, one ping
-    // per person per occurrence is spam.
-    lines.push('')
-    lines.push(
-      schedule.tallies.map((t) => `${plain(t.name)} ${String(t.count)}`).join(' · '),
-    )
-    if (!schedule.even) {
-      lines.push(italic('Heads up: these dates do not split evenly between these names.'))
-    }
+/** The whole textarea body, including the empty-state explanations. */
+export function toRemindScript(schedule: Schedule, options: RemindOptions): string {
+  if (schedule.empty) return 'Add some names and some dates first.'
+  if (normalizeChannel(options.channel).length === 0) {
+    return 'Enter a channel name above to generate the reminder commands.'
   }
-
-  // The link is the whole point — without it the recipient has a screenshot, not a
-  // rotation they can open, edit and reshare.
-  if (url.length > 0) {
-    lines.push('', link(escapeMrkdwn(url), LINK_LABEL))
-  }
-
-  return lines.join('\n')
+  return toRemindCommands(schedule, options).join('\n')
 }

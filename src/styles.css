@@ -480,14 +480,20 @@ table.schedule td {
   margin-bottom: 0.75rem;
 }
 
-.slack-mentions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-bottom: 0.25rem;
+.slack-channel {
+  display: block;
+  max-width: 22rem;
+  margin-bottom: 0.75rem;
 }
 
-.slack-mentions input[type='checkbox'] {
+.slack-channel input {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+  font-family: var(--pico-font-family-monospace);
+}
+
+.slack-panel > button {
+  width: auto;
   margin: 0;
 }
 

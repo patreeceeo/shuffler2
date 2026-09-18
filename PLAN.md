@@ -782,3 +782,33 @@ next addition of any size cannot come out of it. The two levers named in §11 ar
 levers — hand-roll the tab strip (Base UI costs 11.2 kB) or drop the Temporal polyfill for
 hand-rolled calendar math (19.9 kB) — and either one buys back more than everything added
 since M4.
+
+### 12.1 Revised: the Slack tab emits `/remind` commands
+
+The tab no longer produces an mrkdwn message to paste as a post. It takes a **channel name**
+and emits one Slack `/remind` command per slot, read-only, with a copy button. Names are
+treated as Slack usernames.
+
+Why this shape:
+
+- Slack's help documents `/remind [#channel] [what] [when]` and states plainly that you
+  **cannot set a reminder for another person**. So each command targets the channel and
+  @-mentions whoever is up, rather than trying to remind them directly.
+- Slash commands need no token, no OAuth and no server: the person pasting them is already
+  authenticated. That is what makes a real reminder feature possible from a static page at
+  all, given the API is unreachable (§12) and `reminders.add` is retired.
+- Dates use American `m/d/yyyy` and `h:mmam`, the format Slack documents for reliable
+  parsing. `formatWhen` splits the floating wall-clock slot string directly rather than going
+  through `Date`, so no timezone can be introduced.
+
+Two safeguards survive from the previous formatter, for the same reason as before — a name
+arrives from a link someone else may have crafted:
+
+- whitespace in a name is collapsed, or a newline would end the command early and let a name
+  forge an extra `/remind` line;
+- a name that spells `channel`, `here` or `everyone` does **not** get an `@`, or pasting the
+  commands would ping the whole workspace.
+
+**The mrkdwn escaping question is now moot** — slash commands are not mrkdwn, so nothing is
+HTML-escaped and `Tom & Jerry` reads correctly. The open question recorded earlier (whether
+Slack's composer decodes `&amp;` on paste) no longer affects this app.

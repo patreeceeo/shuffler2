@@ -1,31 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
-import { toSlackMessage } from '../lib/slack'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Schedule } from '../lib/schedule'
-import type { RotationState, Slot } from '../state/schema'
+import { toRemindScript } from '../lib/slack'
 
 interface Props {
-  state: RotationState
   schedule: Schedule
-  formatSlot: (slot: Slot) => string
-  /** The rotation link, or '' before the first encode. */
-  url: string
+  /** Rotation title, used as the subject of each reminder. */
+  title: string
 }
 
 /**
- * The Slack tab: a message you paste, not an integration.
+ * Turns the rotation into `/remind` commands to paste into Slack.
  *
- * Why there is no "Post to Slack" button here, in short (PLAN §12 has the long version):
- * the Slack Web API sends no CORS headers so a static page cannot call it, `reminders.add`
- * has been retired since 2023, and posting from the browser would need a token or webhook
- * URL stored in a link that people forward — i.e. handing posting rights to every
- * recipient. So this panel makes the manual path fast and correct instead. It issues no
- * network requests of any kind.
+ * Shuffler has no server and holds no Slack token, so it cannot create reminders itself
+ * (and Slack retired the reminders API in 2023 regardless). Slash commands sidestep all of
+ * it: the person pasting them is already authenticated, so nothing here needs a secret.
+ *
+ * Slack does not allow setting a reminder for another person, so each command targets the
+ * channel and @-mentions whoever is up.
  */
-export default function SlackPanel({ state, schedule, formatSlot, url }: Props) {
-  const [mentions, setMentions] = useState(false)
+export default function SlackPanel({ schedule, title }: Props) {
+  const [channel, setChannel] = useState('')
   const [copied, setCopied] = useState(false)
+  const channelId = useId()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const areaRef = useRef<HTMLTextAreaElement>(null)
+  const textRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(
     () => () => {
@@ -34,11 +32,8 @@ export default function SlackPanel({ state, schedule, formatSlot, url }: Props) 
     [],
   )
 
-  const message = toSlackMessage(state, schedule, formatSlot, { mentions, url })
-
-  const fallbackSelect = () => {
-    areaRef.current?.select()
-  }
+  const script = toRemindScript(schedule, { channel, title })
+  const hasCommands = !schedule.empty && channel.trim().length > 0
 
   const copy = () => {
     const done = () => {
@@ -48,73 +43,56 @@ export default function SlackPanel({ state, schedule, formatSlot, url }: Props) 
         setCopied(false)
       }, 1800)
     }
-    // Same fallback as ShareBar: navigator.clipboard is missing on http:// origins and in
-    // some embeds, so select the field and let the user hit Ctrl+C.
+    // navigator.clipboard is missing on http:// origins and in some embeds; fall back to
+    // selecting the field so Ctrl+C still works.
+    const fallback = () => {
+      textRef.current?.select()
+    }
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(message).then(done, fallbackSelect)
+      navigator.clipboard.writeText(script).then(done, fallback)
     } else {
-      fallbackSelect()
+      fallback()
     }
   }
 
   return (
     <section className="slack-panel" aria-labelledby="slack-heading">
-      <h2 id="slack-heading">Post this to Slack</h2>
-      <p>
-        Shuffler cannot post to Slack itself — it has no server and holds no Slack token,
-        by design. What it can do is hand you a message that is already formatted the way
-        Slack wants, link included. Copy it, paste it in the channel.
-      </p>
+      <h2 id="slack-heading">Slack</h2>
 
-      <label className="slack-mentions">
+      <label htmlFor={channelId} className="slack-channel">
+        Channel the reminders post in
         <input
-          type="checkbox"
-          checked={mentions}
+          id={channelId}
+          type="text"
+          value={channel}
+          placeholder="#chores"
+          spellCheck={false}
           onChange={(event) => {
-            setMentions(event.target.checked)
+            setChannel(event.target.value)
           }}
-        />{' '}
-        Add <code>@</code> before each name —{' '}
-        <strong>this will notify those people</strong> every time the message is posted
+        />
       </label>
-      <p className="hint">
-        {mentions
-          ? 'Slack turns @name into a real mention only when it matches that person’s Slack handle — check the names before you post. Mentions do not work inside a code block, so the schedule is plain lines here and the columns no longer line up.'
-          : 'Off: the schedule goes in a code block, so the columns line up and nobody is notified.'}
-      </p>
 
       <label className="slack-message">
-        <span className="visually-hidden">Slack message</span>
-        <textarea ref={areaRef} readOnly value={message} rows={12} spellCheck={false} />
+        <span className="visually-hidden">Slack /remind commands</span>
+        <textarea
+          ref={textRef}
+          readOnly
+          rows={Math.min(14, Math.max(4, schedule.empty ? 4 : schedule.assignments.length + 1))}
+          value={script}
+          spellCheck={false}
+        />
       </label>
-      <button type="button" onClick={copy}>
-        {copied ? 'Copied' : 'Copy message'}
+
+      <button type="button" onClick={copy} disabled={!hasCommands}>
+        {copied ? 'Copied' : 'Copy commands'}
       </button>
 
-      <h3>Posting it every week</h3>
-      <p>
-        Slack can repeat the post for you; Shuffler is not involved and schedules nothing.
-        In Slack, open <strong>Automations → Workflow Builder</strong> and create a
-        workflow:
-      </p>
-      <ol>
-        <li>
-          Start it <strong>on a schedule</strong> — pick the day, the time and how often
-          it repeats.
-        </li>
-        <li>
-          Add the step <strong>Send a message to a channel</strong> and choose the
-          channel.
-        </li>
-        <li>Paste the message above into the message box, then publish the workflow.</li>
-      </ol>
       <p className="hint">
-        Slack moves this wording around between releases, so the labels may not match
-        exactly. Two things worth knowing: the workflow posts the <em>same</em> text every
-        time, so if you add dates later, paste a fresh copy into it — and if you only want
-        one plain line, <code>/remind</code> still works, though it mangles code blocks.
-        Slack&rsquo;s reminders <em>API</em> was retired in 2023, which is part of why
-        even an app with a token could not set this up for you.
+        Paste these into any Slack message box, one at a time — Slack runs each as you send
+        it. Names are used as Slack usernames, so they need to match the handles in your
+        workspace. Slack does not let you set a reminder for someone else, so each reminder
+        posts in the channel and @-mentions whoever is up.
       </p>
     </section>
   )

@@ -390,63 +390,40 @@ describe('App end to end (jsdom)', () => {
     await waitFor(() => {
       expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
     })
+    const tabs = screen.getAllByRole('tab').map((t) => t.textContent ?? '')
+    const slackIndex = tabs.findIndex((t) => /^Slack$/.test(t))
+    expect(slackIndex).toBeGreaterThan(tabs.findIndex((t) => /^Share/.test(t)))
+    expect(slackIndex).toBeLessThan(tabs.findIndex((t) => /^Help$/.test(t)))
+    // No count badge: Slack is not one of the lists being built.
+    expect(screen.getByRole('tab', { name: 'Slack' })).toHaveTextContent(/^Slack$/)
 
-    const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '')
-    expect(tabs.map((t) => t.replace(/\s+\d+$/, ''))).toEqual([
-      'Names',
-      'Dates',
-      'Share',
-      'Slack',
-      'Help',
-    ])
-
-    const slackTab = screen.getByRole('tab', { name: 'Slack' })
-    expect(slackTab).toHaveTextContent(/^Slack$/)
-    await user.click(slackTab)
-    expect(slackTab).toHaveAttribute('aria-selected', 'true')
-    expect(
-      screen.getByRole('heading', { name: /Post this to Slack/i }),
-    ).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Slack' }))
+    expect(screen.getByRole('heading', { name: /^Slack$/ })).toBeInTheDocument()
   })
 
-  it('the Slack message carries the live share link, and the panel unmounts on exit', async () => {
+  it('builds /remind commands from the rotation once a channel is given', async () => {
     const user = userEvent.setup()
     const seeded: RotationState = {
       v: 2,
-      title: 'Bins',
-      names: ['Ada', 'Grace'],
-      slots: ['2026-09-21T09:00'],
+      title: 'Dish duty',
+      names: ['ada', 'grace'],
+      slots: ['2026-09-21T09:00', '2026-09-28T17:30'],
       groupSize: 1,
     }
     window.history.replaceState(null, '', `/#s=${await encode(seeded)}`)
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+      expect(screen.getByLabelText('Name 1')).toHaveValue('ada')
     })
-
     await user.click(screen.getByRole('tab', { name: 'Slack' }))
-    const area = screen.getByRole('textbox', { name: 'Slack message' })
-    const message = (area as HTMLTextAreaElement).value
-    // The link in the message is the real one, in mrkdwn's <url|label> form. This is what
-    // makes a pasted message a rotation the reader can open, rather than a screenshot.
-    expect(message).toContain(`<${window.location.href}|Open or edit this rotation>`)
-    expect(message).toContain('*Bins*')
-    expect(message).toContain('Ada')
-
-    await user.click(screen.getByRole('checkbox', { name: /will notify those people/i }))
-    expect((area as HTMLTextAreaElement).value).toContain('@Ada')
-
-    // Not keepMounted: leaving the tab takes the message — and its hidden duplicate of
-    // every name in the rotation — back out of the DOM, and resets mentions to off.
-    await user.click(screen.getByRole('tab', { name: /Names/ }))
-    expect(screen.queryByRole('textbox', { name: 'Slack message' })).toBeNull()
-    expect(screen.queryByText(/Open or edit this rotation/)).toBeNull()
-    await user.click(screen.getByRole('tab', { name: 'Slack' }))
-    expect(
-      screen.getByRole('checkbox', { name: /will notify those people/i }),
-    ).not.toBeChecked()
+    await user.type(screen.getByLabelText(/Channel/i), 'chores')
+    expect(screen.getByLabelText('Slack /remind commands')).toHaveValue(
+      [
+        '/remind #chores @ada your turn: Dish duty 9/21/2026 at 9:00am',
+        '/remind #chores @grace your turn: Dish duty 9/28/2026 at 5:30pm',
+      ].join('\n'),
+    )
   })
-
   it('warns from the tab strip when the link gets too long to send', async () => {
     // Deliberately high-entropy: 120 copies of "Person number N" deflate down to ~470
     // characters, nowhere near the threshold. Only incompressible names make a long link.

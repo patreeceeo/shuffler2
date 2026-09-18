@@ -178,12 +178,7 @@ export default function App() {
           first written with keepMounted.
         */}
         <Tabs.Panel value="slack" className="builder-panel">
-          <SlackPanel
-            state={state}
-            schedule={schedule}
-            formatSlot={formatSlot}
-            url={liveUrl}
-          />
+          <SlackPanel schedule={schedule} title={state.title} />
         </Tabs.Panel>
 
         {/* Static prose, so there is no form state to preserve — let it unmount. */}
