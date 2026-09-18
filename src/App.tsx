@@ -29,7 +29,7 @@ export default function App() {
   // Rules-of-React violation the compiler's lint rules reject.
   const trimmedTitle = state.title.trim()
   useEffect(() => {
-    document.title = trimmedTitle.length > 0 ? `${trimmedTitle} — Shuffler` : 'Shuffler'
+    document.title = trimmedTitle.length > 0 ? `${trimmedTitle} — Shuffler2` : 'Shuffler2'
   }, [trimmedTitle])
 
   return (
