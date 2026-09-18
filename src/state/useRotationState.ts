@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { blobFromHash, decode, encode } from './codec'
 import { decodeLegacy } from './legacy'
-import { demoState, EMPTY_STATE, type RotationState } from './schema'
+import { EMPTY_STATE, type RotationState } from './schema'
 
 /**
  * The only code in the app that touches `location` (PLAN §4.1).
  *
- * - On mount: decode the hash. No hash but a v1 query string -> §3.3. Neither -> demo.
+ * - On mount: decode the hash. No hash but a v1 query string -> §3.3. Neither -> empty.
  * - On change: encode and write the hash, debounced ~300 ms. Writing history on every
  *   keystroke is slow and destroys the back button.
  * - replaceState for continuous edits (typing, dragging); pushState for discrete actions
@@ -121,7 +121,7 @@ export function useRotationState(): RotationStore {
     setShareUrl(blob === null ? currentUrlWithBlob('') : currentUrlWithBlob(blob))
   }, [])
 
-  // Mount: seed from the hash, a v1 query string, or the demo.
+  // Mount: seed from the hash, a v1 query string, or an empty rotation.
   useEffect(() => {
     let cancelled = false
     const seed = async () => {
@@ -159,7 +159,9 @@ export function useRotationState(): RotationStore {
       }
 
       if (cancelled) return
-      adopt(demoState(), null)
+      // Nothing to restore: start empty. adopt(_, null) deliberately writes no hash, so a
+      // bare visit keeps a clean URL until the first edit.
+      adopt(EMPTY_STATE, null)
       setReady(true)
     }
     void seed()

@@ -283,8 +283,15 @@ tool is "is this actually even?" — round-robin is even only when
 `(slots.length * groupSize) % names.length === 0`, so surface the imbalance rather than hide
 it.
 
-**Empty state.** Land on a pre-filled demo (three names, four weekly slots) so the page
-explains itself. Any edit replaces the demo entirely.
+**Empty state.** Both lists start **empty** — no demo data. A bare visit writes no hash
+either, so the address bar stays clean until the first edit. Each panel carries its own
+guidance line in place of content ("No names yet. Add one — or paste a whole list at once,
+one name per line."), and the schedule panel says what is still missing rather than
+rendering an empty table.
+
+> Changed after the first build, which landed on a three-name demo. Demo data has to be
+> cleared before real use, and a rotation is personal enough that seeing someone else's
+> placeholder names is noise rather than explanation.
 
 ---
 

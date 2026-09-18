@@ -10,14 +10,14 @@ test('build a rotation, share the link, and reopen it in a fresh context', async
 }) => {
   await page.goto('/')
 
-  // Land on the demo.
-  await expect(page.getByLabel('Name 1')).toHaveValue('Ada')
+  // Both lists start empty.
+  await expect(page.getByText(/No names yet/i)).toBeVisible()
 
   await page.getByLabel('Rotation title').fill('Dish duty')
 
   // Paste a whole list at once — the v1 habit that has to keep working.
+  await page.getByRole('button', { name: '+ Add name' }).click()
   await page.getByLabel('Name 1').click()
-  await page.getByLabel('Name 1').selectText()
   await page.evaluate(async () => {
     await navigator.clipboard.writeText('Ada\nGrace\nLinus\nBarbara')
   })

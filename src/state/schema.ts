@@ -78,26 +78,6 @@ export const EMPTY_STATE: RotationState = Object.freeze({
   groupSize: 1,
 })
 
-/**
- * The landing state (PLAN §5): a tiny demo so the page explains itself. Dates are
- * deliberately fixed rather than relative-to-today, so a screenshot, a test and a first
- * load all agree; the first edit replaces it anyway.
- */
-export function demoState(): RotationState {
-  return {
-    v: 2,
-    title: 'Dish duty',
-    names: ['Ada', 'Grace', 'Linus'],
-    slots: [
-      '2026-09-21T09:00',
-      '2026-09-28T09:00',
-      '2026-10-05T09:00',
-      '2026-10-12T09:00',
-    ],
-    groupSize: 1,
-  }
-}
-
 /** Never throws. Returns null for anything that is not a valid RotationState. */
 export function validate(value: unknown): RotationState | null {
   const result = v.safeParse(RotationStateSchema, value)

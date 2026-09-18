@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_STATE, daysInMonth, demoState, normalizeSlots, validate } from './schema'
+import { EMPTY_STATE, daysInMonth, normalizeSlots, validate } from './schema'
 
 describe('validate', () => {
-  it('accepts the empty and demo states', () => {
+  it('accepts the empty state', () => {
     expect(validate(EMPTY_STATE)).toEqual(EMPTY_STATE)
-    expect(validate(demoState())).toEqual(demoState())
   })
 
   it('rejects malformed slot strings', () => {

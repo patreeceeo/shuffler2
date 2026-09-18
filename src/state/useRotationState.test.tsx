@@ -57,14 +57,23 @@ async function settle() {
 }
 
 describe('useRotationState seeding', () => {
-  it('lands on the demo state when there is no hash and no query string', async () => {
+  it('lands empty when there is no hash and no query string', async () => {
     renderProbe()
     await waitFor(() => {
       expect(screen.getByTestId('ready')).toHaveTextContent('true')
     })
-    expect(screen.getByTestId('names')).toHaveTextContent('Ada,Grace,Linus')
-    expect(screen.getByTestId('slots')).toHaveTextContent('4')
+    expect(screen.getByTestId('names')).toHaveTextContent('')
+    expect(screen.getByTestId('slots')).toHaveTextContent('0')
     expect(screen.getByTestId('corrupted')).toHaveTextContent('false')
+  })
+
+  it('writes no hash on a bare visit, so the URL stays clean until the first edit', async () => {
+    renderProbe()
+    await waitFor(() => {
+      expect(screen.getByTestId('ready')).toHaveTextContent('true')
+    })
+    await new Promise((resolve) => setTimeout(resolve, HASH_DEBOUNCE_MS + 120))
+    expect(window.location.hash).toBe('')
   })
 
   it('seeds from a #s= hash', async () => {

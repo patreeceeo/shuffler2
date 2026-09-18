@@ -34,7 +34,34 @@ function scheduleRows() {
 }
 
 describe('App end to end (jsdom)', () => {
-  it('lands on the demo and renders a schedule for it', async () => {
+  it('lands with both lists empty and leaves the URL untouched', async () => {
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
+    })
+    // No name rows, no slots, no schedule, and nothing written to the address bar.
+    expect(screen.queryByLabelText('Name 1')).toBeNull()
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getByText(/Add some names and some dates/i)).toBeInTheDocument()
+    await settle()
+    expect(window.location.hash).toBe('')
+  })
+
+  it('shows the per-person tally and flags an uneven split', async () => {
+    // 4 slots / 3 names does not divide evenly.
+    const uneven: RotationState = {
+      v: 2,
+      title: '',
+      names: ['Ada', 'Grace', 'Linus'],
+      slots: [
+        '2026-09-21T09:00',
+        '2026-09-28T09:00',
+        '2026-10-05T09:00',
+        '2026-10-12T09:00',
+      ],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(uneven)}`)
     render(<App />)
     await waitFor(() => {
       expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
@@ -42,28 +69,26 @@ describe('App end to end (jsdom)', () => {
     const rows = scheduleRows()
     expect(rows).toHaveLength(4)
     expect(rows[0]).toContain('Ada')
-    expect(rows[1]).toContain('Grace')
-    expect(rows[2]).toContain('Linus')
     expect(rows[3]).toContain('Ada')
-  })
-
-  it('shows the per-person tally and flags an uneven split', async () => {
-    render(<App />)
-    await waitFor(() => {
-      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
-    })
-    // 4 slots / 3 names does not divide evenly.
     expect(screen.getByText(/does not divide evenly/i)).toBeInTheDocument()
   })
 
-  it('reflects a typed name in the schedule and then in the URL', async () => {
+  it('adding a name from empty reaches the schedule and then the URL', async () => {
     const user = userEvent.setup()
+    const datesOnly: RotationState = {
+      v: 2,
+      title: '',
+      names: [],
+      slots: ['2026-09-21T09:00'],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(datesOnly)}`)
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+      expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
     })
-    await user.clear(screen.getByLabelText('Name 1'))
-    await user.type(screen.getByLabelText('Name 1'), 'Zoe')
+    await user.click(screen.getByRole('button', { name: '+ Add name' }))
+    await user.type(await screen.findByLabelText('Name 1'), 'Zoe')
     expect(scheduleRows()[0]).toContain('Zoe')
 
     await settle()

@@ -13,7 +13,7 @@ import { decodeLegacy } from './legacy'
 
 const FIXTURES = [
   {
-    label: 'v2.0 — demo state, three names, four weekly slots',
+    label: 'v2.0 — three names, four weekly slots',
     blob: 'izbSUXLJLM5QSCktqVTSiVZyTElU0lFyL0pMTlXSUfLJzCstVorVMdQxsrQwNjYwMtCJNjQwsDDQQSJjYwE',
     expected: {
       v: 2,
@@ -36,7 +36,7 @@ const FIXTURES = [
 ] as const
 
 describe('fixture links keep decoding', () => {
-  it('decodes the v2.0 demo blob to exactly the recorded state', async () => {
+  it('decodes the v2.0 three-name blob to exactly the recorded state', async () => {
     const fixture = FIXTURES[0]
     await expect(decode(fixture.blob)).resolves.toEqual(fixture.expected)
   })
