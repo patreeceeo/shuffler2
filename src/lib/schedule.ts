@@ -87,5 +87,6 @@ export function toTextTable(
   })
   lines.push('')
   lines.push(schedule.tallies.map((t) => `${t.name} ${String(t.count)}`).join(' · '))
+  lines.push(`made with Shuffler2: ${location.href}`)
   return lines.join('\n')
 }
