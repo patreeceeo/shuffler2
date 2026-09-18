@@ -440,3 +440,23 @@ table.schedule td {
 .help code {
   font-size: 0.9em;
 }
+
+/* Mascot ---------------------------------------------------------------- */
+
+.toolbar .mascot {
+  flex: 0 0 auto;
+  height: 3rem;
+  width: auto; /* intrinsic GIF is 220x124 */
+  border-radius: var(--pico-border-radius);
+  object-fit: cover;
+}
+
+/*
+  A looping GIF is moving content with no pause control (WCAG 2.2.2). It is decorative, so
+  the honest accommodation is to not show it at all.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .toolbar .mascot {
+    display: none;
+  }
+}

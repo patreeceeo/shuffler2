@@ -257,7 +257,13 @@ describe('App end to end (jsdom)', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Name 1')).toHaveValue('<img src=x onerror=alert(1)>')
     })
-    expect(document.querySelector('img')).toBeNull()
+    // The toolbar mascot is the ONLY legitimate <img>. Anything else would mean the
+    // hostile name was parsed as markup instead of escaped as text.
+    const images = [...document.querySelectorAll('img')]
+    expect(images).toHaveLength(1)
+    expect(images[0]).toHaveClass('mascot')
+    expect(images.some((img) => img.getAttribute('src') === 'x')).toBe(false)
+    expect(document.querySelector('[onerror]')).toBeNull()
     expect(document.querySelector('script')).toBeNull()
     expect(scheduleRows()[0]).toContain('<img src=x onerror=alert(1)>')
   })
