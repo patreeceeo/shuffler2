@@ -415,3 +415,28 @@ table.schedule td {
 .builder-panel[hidden] {
   display: none;
 }
+
+/* Help ------------------------------------------------------------------ */
+
+.help {
+  max-width: 62ch; /* prose measure: long lines are the main readability failure here */
+}
+
+.help h3 {
+  margin-top: 1.75rem;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.help h3:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.help p {
+  margin-bottom: 0.75rem;
+  color: var(--pico-muted-color);
+}
+
+.help code {
+  font-size: 0.9em;
+}

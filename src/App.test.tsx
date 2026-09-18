@@ -332,6 +332,25 @@ describe('App end to end (jsdom)', () => {
     expect(window.location.hash).toBe('')
   })
 
+  it('has a Help tab, with no count badge, that explains the link model', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
+    })
+
+    const helpTab = screen.getByRole('tab', { name: 'Help' })
+    expect(helpTab).toHaveTextContent(/^Help$/)
+    await user.click(helpTab)
+    expect(helpTab).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('heading', { name: /How this works/i }),
+    ).toBeInTheDocument()
+    // Help is prose, not a builder, so it unmounts when you leave it.
+    await user.click(screen.getByRole('tab', { name: /Names/ }))
+    expect(screen.queryByRole('heading', { name: /How this works/i })).toBeNull()
+  })
+
   it('sets the document title from the rotation title', async () => {
     const titled: RotationState = {
       v: 2,

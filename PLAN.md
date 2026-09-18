@@ -273,9 +273,22 @@ button, output updates as you type, exactly as v1 did.
 > now defaults to; Radix is still maintained but slower-moving.
 >
 > Two details that matter: the tab labels carry a **count badge**, so the hidden list's
-> contents stay legible without switching; and panels are `keepMounted`, so a half-filled
-> recurrence form is not discarded when you flip to Names and back. A kept-mounted panel
-> is still `hidden`, i.e. out of both the layout and the accessibility tree.
+> contents stay legible without switching; and the two builder panels are `keepMounted`,
+> so a half-filled recurrence form is not discarded when you flip to Names and back. A
+> kept-mounted panel is still `hidden`, i.e. out of both the layout and the accessibility
+> tree.
+>
+> A third tab, **Help**, carries the prose that explains the link-as-document model, the
+> round-robin rule, shuffle-vs-manual-order, and the floating-time decision — the things a
+> first-time visitor cannot infer from an empty page now that there is no demo data. It
+> takes no count badge and is not `keepMounted`: it is static prose with no form state to
+> lose.
+
+**The empty-URL invariant.** No hash ⇔ empty rotation, in both directions. A bare visit
+writes no hash, and an empty rotation writes none either — so `Reset`, or deleting the last
+name and date, hands back a clean URL rather than `#s=<blob encoding nothing>`. `flush`
+short-circuits on `isEmptyRotation` and sets `lastWritten` to `null` to match what
+`blobFromHash` reports for a bare URL, which keeps the echo guard intact.
 
 **Names panel.** One input per row. Enter commits and opens a new row; Backspace on an empty
 row deletes it and focuses the previous. **Multi-line paste splits into rows** — v1 users are
@@ -583,15 +596,16 @@ clean, 163 tests green, build clean on a second run over an existing `dist/`,
 `dist/index.html` references `./assets/…` relatively, and the Temporal polyfill lands in its
 own lazily-imported chunk rather than the main bundle.
 
-Measured bundle, gzipped: **124.1 kB** on Chrome/Firefox (native Temporal, polyfill never
-fetched), **144.0 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
+Measured bundle, gzipped: **125.8 kB** on Chrome/Firefox (native Temporal, polyfill never
+fetched), **145.7 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
 
 > Base UI's Tabs cost **+11.2 kB gzipped**, not the ~2.4 kB its comparisons quote — the
 > quoted figure is the Tabs parts alone, excluding Base UI's shared internals, which a
-> first component pulls in wholesale. That leaves only **6 kB of Safari headroom**. The
-> next dependency needs a size check before it goes in, and if the budget binds, the two
-> obvious levers are hand-rolling the tab strip (~40 lines with the right ARIA) or
-> dropping the Temporal polyfill for hand-rolled calendar math.
+> first component pulls in wholesale. With the Help tab's prose on top, that leaves about
+> **4 kB of Safari headroom**. The next dependency needs a size check before it goes in,
+> and if the budget binds, the two obvious levers are hand-rolling the tab strip (~40
+> lines with the right ARIA) or dropping the Temporal polyfill for hand-rolled calendar
+> math.
 
 Corrections to this plan found during the build:
 

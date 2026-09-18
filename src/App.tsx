@@ -11,6 +11,7 @@ import ScheduleTable from './components/ScheduleTable'
 import ShareBar from './components/ShareBar'
 import SlotList from './components/SlotList'
 import Toolbar from './components/Toolbar'
+import Help from './components/Help'
 
 export default function App() {
   const { state, ready, corrupted, dismissCorrupted, update, shareUrl } =
@@ -73,6 +74,10 @@ export default function App() {
           <Tabs.Tab value="dates" className="builder-tab">
             Dates <span className="tab-count">{state.slots.length}</span>
           </Tabs.Tab>
+          {/* No count badge: Help is not one of the two lists being built. */}
+          <Tabs.Tab value="help" className="builder-tab">
+            Help
+          </Tabs.Tab>
           <Tabs.Indicator className="builder-tab-indicator" />
         </Tabs.List>
 
@@ -125,6 +130,11 @@ export default function App() {
               }}
             />
           </div>
+        </Tabs.Panel>
+
+        {/* Static prose, so there is no form state to preserve — let it unmount. */}
+        <Tabs.Panel value="help" className="builder-panel">
+          <Help />
         </Tabs.Panel>
       </Tabs.Root>
 
