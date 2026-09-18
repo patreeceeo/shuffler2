@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Tabs } from '@base-ui/react/tabs'
 import { useRotationState } from './state/useRotationState'
 import { EMPTY_STATE, normalizeSlots } from './state/schema'
 import { derive, toTextTable } from './lib/schedule'
@@ -53,52 +54,79 @@ export default function App() {
         </article>
       )}
 
-      <div className="panels">
-        <NameList
-          names={state.names}
-          groupSize={state.groupSize}
-          onNamesChange={(names) => {
-            update((prev) => ({ ...prev, names }))
-          }}
-          onGroupSizeChange={(groupSize) => {
-            update((prev) => ({ ...prev, groupSize }))
-          }}
-        />
+      {/*
+        The schedule is the answer, so it sits directly under the toolbar where the eye
+        lands after hitting Shuffle. The two builders that feed it are secondary, and go
+        below in tabs so only one is on screen at a time.
+      */}
+      <ScheduleTable
+        schedule={schedule}
+        hasNames={state.names.length > 0}
+        hasSlots={state.slots.length > 0}
+      />
 
-        <div className="when-panel">
-          <RecurrenceBuilder
-            slotCount={state.slots.length}
-            onGenerate={(slots) => {
-              // Append and de-duplicate; generate never wipes what is there (§5).
-              update(
-                (prev) => ({ ...prev, slots: normalizeSlots([...prev.slots, ...slots]) }),
-                'push',
-              )
+      <Tabs.Root defaultValue="names" className="builder-tabs">
+        <Tabs.List className="builder-tabs-list" aria-label="Rotation inputs">
+          <Tabs.Tab value="names" className="builder-tab">
+            Names <span className="tab-count">{state.names.length}</span>
+          </Tabs.Tab>
+          <Tabs.Tab value="dates" className="builder-tab">
+            Dates <span className="tab-count">{state.slots.length}</span>
+          </Tabs.Tab>
+          <Tabs.Indicator className="builder-tab-indicator" />
+        </Tabs.List>
+
+        {/*
+          keepMounted: the recurrence builder holds unsubmitted form state (start date,
+          interval, count). Unmounting it on a tab switch would silently discard a
+          half-filled form.
+        */}
+        <Tabs.Panel value="names" keepMounted className="builder-panel">
+          <NameList
+            names={state.names}
+            groupSize={state.groupSize}
+            onNamesChange={(names) => {
+              update((prev) => ({ ...prev, names }))
             }}
-            onAddSlot={(slot) => {
-              update((prev) => ({
-                ...prev,
-                slots: normalizeSlots([...prev.slots, slot]),
-              }))
+            onGroupSizeChange={(groupSize) => {
+              update((prev) => ({ ...prev, groupSize }))
             }}
           />
-          <SlotList
-            slots={state.slots}
-            onSlotsChange={(slots, discrete) => {
-              update(
-                (prev) => ({ ...prev, slots: normalizeSlots(slots) }),
-                discrete === true ? 'push' : 'replace',
-              )
-            }}
-          />
-        </div>
+        </Tabs.Panel>
 
-        <ScheduleTable
-          schedule={schedule}
-          hasNames={state.names.length > 0}
-          hasSlots={state.slots.length > 0}
-        />
-      </div>
+        <Tabs.Panel value="dates" keepMounted className="builder-panel">
+          <div className="when-panel">
+            <RecurrenceBuilder
+              slotCount={state.slots.length}
+              onGenerate={(slots) => {
+                // Append and de-duplicate; generate never wipes what is there (§5).
+                update(
+                  (prev) => ({
+                    ...prev,
+                    slots: normalizeSlots([...prev.slots, ...slots]),
+                  }),
+                  'push',
+                )
+              }}
+              onAddSlot={(slot) => {
+                update((prev) => ({
+                  ...prev,
+                  slots: normalizeSlots([...prev.slots, slot]),
+                }))
+              }}
+            />
+            <SlotList
+              slots={state.slots}
+              onSlotsChange={(slots, discrete) => {
+                update(
+                  (prev) => ({ ...prev, slots: normalizeSlots(slots) }),
+                  discrete === true ? 'push' : 'replace',
+                )
+              }}
+            />
+          </div>
+        </Tabs.Panel>
+      </Tabs.Root>
 
       <ShareBar
         url={ready ? shareUrl : ''}

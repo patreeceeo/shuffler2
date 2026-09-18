@@ -25,7 +25,8 @@ test('build a rotation, share the link, and reopen it in a fresh context', async
   await page.keyboard.press('ControlOrMeta+v')
   await expect(page.getByLabel('Name 4')).toHaveValue('Barbara')
 
-  // Generate twelve weekly slots.
+  // Generate twelve weekly slots. The date builder is behind its own tab.
+  await page.getByRole('tab', { name: /Dates/ }).click()
   await page.getByLabel('Start date').fill('2026-03-02')
   await page.getByRole('button', { name: 'Generate' }).click()
   const rows = page.locator('table.schedule tbody tr')

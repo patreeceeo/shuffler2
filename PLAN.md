@@ -247,20 +247,35 @@ button, output updates as you type, exactly as v1 did.
 ```
 ┌────────────────────────────────────────────────────────────┐
 │  [ Rotation title …            ]   ⟳ Shuffle    ⤫ Reset    │
-├──────────────┬──────────────────┬──────────────────────────┤
-│ NAMES        │ WHEN             │ SCHEDULE                 │
-│ 1 Ada     ⋮⋮ │ Every [Week ▾]   │ Mon Sep 21, 9:00 — Ada   │
-│ 2 Grace   ⋮⋮ │ on [Mon ▾]       │ Mon Sep 28, 9:00 — Grace │
-│ 3 Linus   ⋮⋮ │ at [09:00]       │ Mon Oct  5, 9:00 — Linus │
-│ + add name   │ from [Sep 21]    │ Mon Oct 12, 9:00 — Ada   │
-│              │ for [12] times   │ …                        │
-│ people per   │ [ Generate ]     │                          │
-│ slot: [1]    │ ── or ──         │ Ada 4 · Grace 4 · Linus 4│
-│              │ + add a date     │                          │
-├──────────────┴──────────────────┴──────────────────────────┤
+├────────────────────────────────────────────────────────────┤
+│ SCHEDULE                                                   │
+│   Mon Sep 21, 9:00 — Ada          Mon Oct  5, 9:00 — Linus │
+│   Mon Sep 28, 9:00 — Grace        Mon Oct 12, 9:00 — Ada   │
+│   Ada 4 · Grace 4 · Linus 4                                │
+├────────────────────────────────────────────────────────────┤
+│  ┌─ NAMES 3 ─┬─ DATES 12 ─┐                                │
+│  │ 1 Ada  ⋮⋮ │                                             │
+│  │ 2 Grace⋮⋮ │   (the other builder is one click away)     │
+│  │ 3 Linus⋮⋮ │                                             │
+│  │ + add name│                                             │
+│  │ people per slot: [1]                                    │
+├────────────────────────────────────────────────────────────┤
 │ 🔗 https://…/#s=N4Igb…  [Copy]   412 chars                 │
 └────────────────────────────────────────────────────────────┘
 ```
+
+> **Revised after the first build.** The original three-column layout put the schedule —
+> the thing you are actually looking at after hitting Shuffle — in the far right column,
+> below the fold on a laptop. The schedule now sits directly under the toolbar, and the
+> two builders that feed it share a tab strip beneath it so only one is on screen at a
+> time. Tabs come from **Base UI** (`@base-ui/react`, ~2.4 kB for Tabs), which is the
+> actively-developed successor to Radix by the same engineers and what `shadcn init`
+> now defaults to; Radix is still maintained but slower-moving.
+>
+> Two details that matter: the tab labels carry a **count badge**, so the hidden list's
+> contents stay legible without switching; and panels are `keepMounted`, so a half-filled
+> recurrence form is not discarded when you flip to Names and back. A kept-mounted panel
+> is still `hidden`, i.e. out of both the layout and the accessibility tree.
 
 **Names panel.** One input per row. Enter commits and opens a new row; Backspace on an empty
 row deletes it and focuses the previous. **Multi-line paste splits into rows** — v1 users are
@@ -568,8 +583,15 @@ clean, 163 tests green, build clean on a second run over an existing `dist/`,
 `dist/index.html` references `./assets/…` relatively, and the Temporal polyfill lands in its
 own lazily-imported chunk rather than the main bundle.
 
-Measured bundle, gzipped: **112.8 kB** on Chrome/Firefox (native Temporal, polyfill never
-fetched), **132.6 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
+Measured bundle, gzipped: **124.1 kB** on Chrome/Firefox (native Temporal, polyfill never
+fetched), **144.0 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
+
+> Base UI's Tabs cost **+11.2 kB gzipped**, not the ~2.4 kB its comparisons quote — the
+> quoted figure is the Tabs parts alone, excluding Base UI's shared internals, which a
+> first component pulls in wholesale. That leaves only **6 kB of Safari headroom**. The
+> next dependency needs a size check before it goes in, and if the budget binds, the two
+> obvious levers are hand-rolling the tab strip (~40 lines with the right ARIA) or
+> dropping the Temporal polyfill for hand-rolled calendar math.
 
 Corrections to this plan found during the build:
 

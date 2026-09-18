@@ -178,8 +178,70 @@ describe('App end to end (jsdom)', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
     })
+    // The date builder lives behind the Dates tab now, so switch to it first.
+    await user.click(screen.getByRole('tab', { name: /Dates/ }))
     await user.click(screen.getByRole('button', { name: 'Generate' }))
     expect(scheduleRows()).toHaveLength(12)
+  })
+
+  it('shows one builder at a time and switches between them', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
+    })
+
+    const namesTab = screen.getByRole('tab', { name: /Names/ })
+    const datesTab = screen.getByRole('tab', { name: /Dates/ })
+    expect(namesTab).toHaveAttribute('aria-selected', 'true')
+    expect(datesTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('button', { name: '+ Add name' })).toBeVisible()
+    // The date builder is kept mounted so a half-filled recurrence form survives a tab
+    // switch, but it is `hidden` — out of the layout AND out of the accessibility tree,
+    // which is why it takes { hidden: true } to find it at all.
+    expect(screen.queryByRole('button', { name: 'Generate' })).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Generate', hidden: true }),
+    ).not.toBeVisible()
+
+    await user.click(datesTab)
+    expect(datesTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '+ Add name' })).toBeNull()
+  })
+
+  it('the tab labels count what is in each list, including the hidden one', async () => {
+    const seeded: RotationState = {
+      v: 2,
+      title: '',
+      names: ['Ada', 'Grace', 'Linus'],
+      slots: ['2026-09-21T09:00', '2026-09-28T09:00'],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(seeded)}`)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+    })
+    expect(screen.getByRole('tab', { name: /Names/ })).toHaveTextContent('Names 3')
+    expect(screen.getByRole('tab', { name: /Dates/ })).toHaveTextContent('Dates 2')
+  })
+
+  it('the schedule renders above the builder tabs', async () => {
+    const seeded: RotationState = {
+      v: 2,
+      title: '',
+      names: ['Ada'],
+      slots: ['2026-09-21T09:00'],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(seeded)}`)
+    render(<App />)
+    const table = await screen.findByRole('table')
+    const tablist = screen.getByRole('tablist')
+    // DOCUMENT_POSITION_FOLLOWING: the tab strip comes after the schedule in the DOM.
+    expect(table.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy()
   })
 
   it('a name that looks like markup stays text everywhere (v1 stored XSS)', async () => {

@@ -33,20 +33,13 @@
 
 /* Panels --------------------------------------------------------------- */
 
-.panels {
-  display: grid;
-  gap: calc(var(--shuffler-gap) * 1.5);
-  grid-template-columns: 1fr;
-  align-items: start;
-}
+/*
+  Layout order is toolbar -> schedule -> builder tabs -> share bar. The schedule is the
+  answer, so it sits where the eye lands after Shuffle; the two builders that feed it
+  share one tab strip below, so only one is on screen at a time.
+*/
 
-@media (min-width: 62rem) {
-  .panels {
-    grid-template-columns: minmax(14rem, 1fr) minmax(15rem, 1fr) minmax(18rem, 1.4fr);
-  }
-}
-
-.panels section > h2 {
+section > h2 {
   font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -331,4 +324,94 @@ table.schedule td {
 .tallies.uneven .uneven-note {
   flex-basis: 100%;
   color: var(--pico-del-color, #b3261e);
+}
+
+/* Builder tabs ---------------------------------------------------------- */
+
+.builder-tabs {
+  margin-top: calc(var(--shuffler-gap) * 1.75);
+}
+
+.builder-tabs-list {
+  position: relative;
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.builder-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
+  margin: 0;
+  padding: 0.6rem 1rem;
+  width: auto;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pico-muted-color);
+  cursor: pointer;
+}
+
+.builder-tab:hover {
+  color: var(--pico-color);
+  background: var(--pico-secondary-background);
+}
+
+.builder-tab[data-selected] {
+  color: var(--pico-primary);
+}
+
+/* Keyboard focus must stay obvious: the tab strip is reachable by Tab, then arrows. */
+.builder-tab:focus-visible {
+  outline: 2px solid var(--pico-primary-focus);
+  outline-offset: -2px;
+}
+
+/* The count makes the *hidden* tab's contents legible without switching to it. */
+.tab-count {
+  display: inline-block;
+  min-width: 1.5em;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 1rem;
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.builder-tab[data-selected] .tab-count {
+  background: var(--pico-primary);
+  color: var(--pico-primary-inverse);
+}
+
+.builder-tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: var(--active-tab-width);
+  background: var(--pico-primary);
+  transform: translateX(var(--active-tab-left));
+  transition: transform 0.2s ease, width 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .builder-tab-indicator {
+    transition: none;
+  }
+}
+
+.builder-panel {
+  padding-top: calc(var(--shuffler-gap) * 1.25);
+}
+
+/* A hidden panel is kept mounted so a half-filled recurrence form survives a tab
+   switch; it must still be out of the layout and out of the a11y tree. */
+.builder-panel[hidden] {
+  display: none;
 }
