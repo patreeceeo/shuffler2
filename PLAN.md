@@ -466,16 +466,25 @@ _before_ `react()`:
 
 ```ts
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
-import { babel } from '@rolldown/plugin-babel'
+import babel from '@rolldown/plugin-babel'   // default export, not { babel }
 
 export default defineConfig({
   base: './',
   plugins: [
-    babel({ include: /\.[jt]sx?$/, babelConfig: reactCompilerPreset() }),
+    babel({ include: /\.[jt]sx?$/, presets: [reactCompilerPreset()] }),
     react(),
   ],
 })
 ```
+
+> **Corrected during M0.** The shape above is what `@rolldown/plugin-babel@0.2` actually
+> exports: a *default* export taking `presets: [...]`, not a named `{ babel }` taking
+> `babelConfig:` as most current write-ups (and this plan's first draft) claimed. The
+> plugin-ordering advice was right.
+>
+> Likewise `eslint-plugin-react-hooks` v7 moved its flat preset to
+> `configs.flat['recommended-latest']`; the bare `configs['recommended-latest']` is the old
+> eslintrc shape and ESLint 10 rejects it.
 
 And the lint rules now live in **`eslint-plugin-react-hooks`** (`recommended-latest` preset),
 _not_ the older `eslint-plugin-react-compiler` that most blog posts still name. Turn the lint
@@ -542,3 +551,43 @@ exceptions, "every other Tuesday except holidays").
   the only real traps are 75-octet line folding and escaping commas and semicolons. Reach for a
   library only if export grows beyond a flat list.
 - **`react-beautiful-dnd`** — deprecated; listed only because it still ranks first in search.
+
+---
+
+## 11. Build notes (M0–M4 complete)
+
+Implemented as five milestone commits (`f18e7e9` … `84d0add`). Verified independently: lint
+clean, 163 tests green, build clean on a second run over an existing `dist/`,
+`dist/index.html` references `./assets/…` relatively, and the Temporal polyfill lands in its
+own lazily-imported chunk rather than the main bundle.
+
+Measured bundle, gzipped: **112.8 kB** on Chrome/Firefox (native Temporal, polyfill never
+fetched), **132.6 kB** on Safari (+19.9 kB polyfill chunk). Budget was 150 kB.
+
+Corrections to this plan found during the build:
+
+- §10.1's React Compiler snippet was wrong — fixed in place above.
+- §3.2's "200–300 characters" estimate for the 20×52 case was pessimistic: the real figure is
+  **219 characters**, and a realistic 4-name × 12-slot rotation is **98**.
+- §3.3 did not say what happens when v1's `rotationStart` is itself a Sunday. Resolved from
+  v1's source: `getDay()` returns 0, so `d + (7 - 0)` advances a **full week**. The
+  implementation matches v1; `src/state/legacy.test.ts` pins it.
+- §3.3 was silent above 18 items, where v1's permutation index is already meaningless. The
+  importer keeps the given order above `LEGACY_MAX_ITEMS`.
+- **The wire format needs a canonical-form rule**, which this plan omitted. `decode(encode(s))`
+  is an identity only for slots already sorted and de-duplicated, because the encoder
+  normalizes. `normalizeSlots` now runs on every write path.
+- **`temporal-polyfill/global` ships empty types.** The real global types are at
+  `temporal-polyfill/types/global` → `temporal-spec/global`; see `src/globals.d.ts`.
+- **`DecompressionStream` rejects the writer's promise separately from the reader's**, so a
+  truncated blob leaks an unhandled `Z_BUF_ERROR` long after `decode()` has correctly returned
+  `null`. `codec.ts` uses `pipeThrough` and catches it.
+- Fake timers cannot test the write path — `CompressionStream` is zlib on Node's thread pool,
+  i.e. real I/O. The hook tests use real timers deliberately.
+
+One library added beyond §10: `@dnd-kit/modifiers` (~1 kB, same family) for
+`restrictToVerticalAxis`.
+
+**Still open:** the Playwright specs in `e2e/smoke.spec.ts` are written and typecheck, but no
+browser has executed them — `playwright install chromium` is blocked by the egress allowlist in
+the build environment. The app has not yet been rendered in a real browser at all.
