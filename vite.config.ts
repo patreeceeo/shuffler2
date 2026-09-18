@@ -9,6 +9,30 @@ import babel from '@rolldown/plugin-babel'
 // docs still show.)
 export default defineConfig({
   base: './',
+  server: {
+    // Open the app and reload on save. Vite watches by default, so the only thing worth
+    // configuring is HOW it watches.
+    open: true,
+    watch: {
+      /*
+       * Polling, on purpose.
+       *
+       * Native filesystem events do not cross a Windows/Linux boundary: run `npm run dev`
+       * inside WSL (or a container) against a project on an NTFS drive and inotify never
+       * fires for edits made by a Windows-side editor, so the page silently never reloads
+       * and you end up staring at a stale bundle. The same is true of network drives and
+       * some virtualised mounts. Polling is immune to all of it.
+       *
+       * The usual objection is CPU cost, which does not apply at this size: Vite already
+       * excludes node_modules from the watcher, leaving a few dozen files in src/ to stat
+       * every 300ms. If you are on a machine where native events work and you would rather
+       * have them, set VITE_NO_POLL=1.
+       */
+      usePolling: process.env.VITE_NO_POLL !== '1',
+      interval: 300,
+      binaryInterval: 1000,
+    },
+  },
   plugins: [
     babel({
       include: /\.[jt]sx?$/,
