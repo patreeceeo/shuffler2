@@ -507,19 +507,16 @@ _before_ `react()`:
 
 ```ts
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
-import babel from '@rolldown/plugin-babel'   // default export, not { babel }
+import babel from '@rolldown/plugin-babel' // default export, not { babel }
 
 export default defineConfig({
   base: './',
-  plugins: [
-    babel({ include: /\.[jt]sx?$/, presets: [reactCompilerPreset()] }),
-    react(),
-  ],
+  plugins: [babel({ include: /\.[jt]sx?$/, presets: [reactCompilerPreset()] }), react()],
 })
 ```
 
 > **Corrected during M0.** The shape above is what `@rolldown/plugin-babel@0.2` actually
-> exports: a *default* export taking `presets: [...]`, not a named `{ babel }` taking
+> exports: a _default_ export taking `presets: [...]`, not a named `{ babel }` taking
 > `babelConfig:` as most current write-ups (and this plan's first draft) claimed. The
 > plugin-ordering advice was right.
 >
@@ -669,11 +666,11 @@ that the hotlink had dented.
 
 Asset sizing, from the 640×360 / 273-frame / **22 MB** original:
 
-| Asset | Spec | Size |
-| --- | --- | --- |
-| `public/og-card.jpg` | static frame, 1200×630 | 52 kB |
+| Asset                   | Spec                          | Size   |
+| ----------------------- | ----------------------------- | ------ |
+| `public/og-card.jpg`    | static frame, 1200×630        | 52 kB  |
 | `src/assets/mascot.gif` | 160×90, 10fps, 3s, 32 colours | 208 kB |
-| `public/favicon.png` | single frame | 65 kB |
+| `public/favicon.png`    | single frame                  | 65 kB  |
 
 A whole deploy is now **828 kB**, against roughly 23 MB with the original GIF in `public/`.
 None of it counts toward the JS budget, which is unchanged.
@@ -682,3 +679,106 @@ None of it counts toward the JS budget, which is unchanged.
 > blob is still in git history and every clone still pays for it. Removing it needs a history
 > rewrite (`git filter-repo` or BFG) plus a force-push — worth doing before the repo is
 > shared or made public, and not something to do casually afterwards.
+
+---
+
+## 12. The Slack tab — a paste helper, not an integration
+
+The Slack tab generates a message formatted for Slack and hands it to you to paste. It makes
+**no network requests**, holds **no token and no webhook URL**, and schedules nothing.
+
+That is not a first cut waiting to be finished. Three independent findings say the
+integration is not available to a page like this one, and anyone who tries to "complete" it
+will hit all three:
+
+1. **The Slack Web API sends no CORS headers** and is documented as server-side only. A
+   static page cannot call `chat.postMessage`, and cannot call `users.list` either — which
+   is why the tab offers a typed `@handle` rather than the proper `<@U01ABCDEF>` member-ID
+   mention: resolving a name to an ID needs an API call that cannot be made from here.
+2. **`reminders.add` is gone.** Slack began retiring the reminders API methods in March 2023
+   and now describes them as degraded or useless. Even with a token and a server, the app
+   could not create the recurring reminder; Workflow Builder is where that lives now.
+3. **A secret cannot live in this app's state.** The state _is_ a link people forward. A bot
+   token or an incoming-webhook URL stored in the link, in `localStorage` or in a config
+   file would hand posting rights to everyone who receives the link — which is the whole
+   distribution mechanism. There is nowhere in this architecture for a credential to hide.
+
+The honest options were therefore: add a backend (and stop being the thing described in §2),
+or make the manual path fast and exact. This is the second.
+
+### 12.1 What `lib/slack.ts` has to get right
+
+Slack's `mrkdwn` is not Markdown, and the differences are all load-bearing:
+
+|        | mrkdwn               | Markdown             |
+| ------ | -------------------- | -------------------- |
+| bold   | `*one asterisk*`     | `**two**`            |
+| italic | `_underscores_`      | `*or* _either_`      |
+| link   | `<https://x\|label>` | `[label](https://x)` |
+
+Plus three rules that exist because names arrive from a URL someone else may have crafted —
+the same untrusted-input posture as §3.4:
+
+- **`&`, `<`, `>` are escaped to `&amp;`, `&lt;`, `&gt;`** in every piece of user text. All
+  three or none: escape only the angle brackets and a name containing the literal text
+  `&lt;!channel&gt;` has Slack's parser turn the entities back into brackets, reassembling
+  the broadcast ping the escaping was meant to prevent. The cost is cosmetic and worth
+  knowing: a name with a real `&` in it reads `&amp;` if the text is pasted somewhere that
+  does not interpret mrkdwn entities.
+- **Backtick runs of two or more collapse to one.** Code blocks do not nest, so a ` ``` `
+  inside the table would break out of the block — and a ` ``` ` in the tally line _below_
+  the block would open a new one that swallows the link line, silently costing the message
+  the one thing it exists to carry. Collapsing runs makes a fence unrepresentable however
+  the pieces are concatenated or padded.
+- **Whitespace in a name is flattened to single spaces.** `MAX_NAME` is the only constraint
+  the schema puts on a name, so a crafted link can put a newline in one, and a name spanning
+  two lines can forge its own message line — a second "link" line pointing elsewhere, for
+  instance.
+
+### 12.2 Two message shapes, because of one Slack rule
+
+`@handle` is **not** linkified inside a code block. That forces a choice rather than a
+preference:
+
+- **Mentions off (the default).** The schedule goes in a triple-backtick block, so the date
+  column stays aligned in Slack's monospace rendering. Nobody is notified.
+- **Mentions on.** No code block anywhere in the message; one plain line per slot. The
+  mentions work, the columns no longer line up. The panel says so.
+
+Off by default because posting the message pings real people, and the checkbox label names
+that consequence. A typed `@name` only becomes a mention when it matches that person's Slack
+handle, which the app cannot check (finding 1) — so this is a best-effort nudge and the panel
+says that too. The tally line stays un-mentioned: one ping per person is a nudge, one ping
+per person per occurrence is spam.
+
+The panel is **not** `keepMounted`. Its only state is that checkbox, and re-entering with it
+cleared lands on the safer shape. The second reason is concrete: a kept-mounted panel is
+hidden but still in the DOM, and its textarea holds a copy of every name and date in the
+rotation, which shadows the visible copy for any `getByText` query — six App tests broke on
+exactly that before it was removed.
+
+### 12.3 Recurring posts belong to Slack
+
+The panel explains Workflow Builder — scheduled trigger, then a "send a message to a
+channel" step with the generated message pasted in — and says plainly that Slack does the
+repeating. The workflow holds a _snapshot_: add dates later and the workflow needs a fresh
+paste. Nothing in Shuffler watches a clock.
+
+### 12.4 While we were in there
+
+`toTextTable` was including the rotation link by reading `location.href` directly. That was
+wrong twice over: the module is pure and runs under the node test environment, where there
+is no `location` (it failed two tests at HEAD), and the hash write is debounced ~300 ms
+(§4.1), so `location.href` lags the state the table was built from and could copy a link to
+the _previous_ rotation. The URL is now threaded in from `App`, which owns `shareUrl`, and is
+optional — omitted or empty means no link line.
+
+Bundle cost of the whole tab: **+2.2 kB gzipped** — no new dependencies, just code and
+prose (+2.10 kB JS, +0.08 kB CSS). That moves the measured figures from 126.4 → **128.6 kB**
+on Chrome/Firefox and 146.3 → **148.5 kB** on Safari, against the 150 kB budget of §9.5.
+
+So the §11 warning has come true: there is now about **1.5 kB of Safari headroom**, and the
+next addition of any size cannot come out of it. The two levers named in §11 are still the
+levers — hand-roll the tab strip (Base UI costs 11.2 kB) or drop the Temporal polyfill for
+hand-rolled calendar math (19.9 kB) — and either one buys back more than everything added
+since M4.

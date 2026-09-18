@@ -12,6 +12,7 @@ import ShareBar, { URL_WARN_LENGTH } from './components/ShareBar'
 import SlotList from './components/SlotList'
 import Toolbar from './components/Toolbar'
 import Help from './components/Help'
+import SlackPanel from './components/SlackPanel'
 
 export default function App() {
   const { state, ready, corrupted, dismissCorrupted, update, shareUrl } =
@@ -88,7 +89,13 @@ export default function App() {
               </span>
             )}
           </Tabs.Tab>
-          {/* No count badge: neither Share nor Help is one of the lists being built. */}
+          {/*
+            No count badge on Share, Slack or Help: none of them is one of the lists being
+            built, so there is no hidden count to surface.
+          */}
+          <Tabs.Tab value="slack" className="builder-tab">
+            Slack
+          </Tabs.Tab>
           <Tabs.Tab value="help" className="builder-tab">
             Help
           </Tabs.Tab>
@@ -154,6 +161,28 @@ export default function App() {
           <ShareBar
             url={liveUrl}
             textTable={toTextTable(state, schedule, formatSlot, liveUrl)}
+          />
+        </Tabs.Panel>
+
+        {/*
+          NOT keepMounted, for the same reason as Share and one of its own.
+
+          Its only state is the @-mention checkbox, and re-entering with it cleared lands on
+          the safer of the two shapes — an unticked box pings nobody, so the state that gets
+          lost is the one worth losing.
+
+          The other reason is concrete: a kept-mounted panel is hidden but still in the DOM,
+          and this one's textarea contains a copy of every name, date and guidance line in
+          the rotation. That duplicate shadows the visible copy — `getByText` does not skip
+          hidden nodes, and six existing App tests broke on exactly that when this panel was
+          first written with keepMounted.
+        */}
+        <Tabs.Panel value="slack" className="builder-panel">
+          <SlackPanel
+            state={state}
+            schedule={schedule}
+            formatSlot={formatSlot}
+            url={liveUrl}
           />
         </Tabs.Panel>
 

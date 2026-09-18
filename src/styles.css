@@ -396,7 +396,9 @@ table.schedule td {
   width: var(--active-tab-width);
   background: var(--pico-primary);
   transform: translateX(var(--active-tab-left));
-  transition: transform 0.2s ease, width 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    width 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -464,4 +466,36 @@ table.schedule td {
 .tab-warn {
   margin-left: 0.4rem;
   color: var(--pico-del-color, #b3261e);
+}
+
+/* --- Slack tab ------------------------------------------------------------- */
+
+.slack-panel h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.slack-panel p,
+.slack-panel ol {
+  margin-bottom: 0.75rem;
+}
+
+.slack-mentions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.slack-mentions input[type='checkbox'] {
+  margin: 0;
+}
+
+.slack-message textarea {
+  font-family: var(--pico-font-family-monospace);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+  margin-bottom: 0.5rem;
 }

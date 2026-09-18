@@ -241,8 +241,9 @@ describe('App end to end (jsdom)', () => {
     const table = await screen.findByRole('table')
     const tablist = screen.getByRole('tablist')
     // DOCUMENT_POSITION_FOLLOWING: the tab strip comes after the schedule in the DOM.
-    expect(table.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .toBeTruthy()
+    expect(
+      table.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('a name that looks like markup stays text everywhere (v1 stored XSS)', async () => {
@@ -350,9 +351,7 @@ describe('App end to end (jsdom)', () => {
     expect(helpTab).toHaveTextContent(/^Help$/)
     await user.click(helpTab)
     expect(helpTab).toHaveAttribute('aria-selected', 'true')
-    expect(
-      screen.getByRole('heading', { name: /How this works/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /How this works/i })).toBeInTheDocument()
     // Help is prose, not a builder, so it unmounts when you leave it.
     await user.click(screen.getByRole('tab', { name: /Names/ }))
     expect(screen.queryByRole('heading', { name: /How this works/i })).toBeNull()
@@ -379,8 +378,73 @@ describe('App end to end (jsdom)', () => {
     await user.click(screen.getByRole('tab', { name: /Share/ }))
     const field = screen.getByRole('textbox', { name: 'Shareable link' })
     expect(field).toHaveValue(window.location.href)
-    const decoded = await decode(blobFromHash(new URL(field.getAttribute('value') ?? '').hash))
+    const decoded = await decode(
+      blobFromHash(new URL(field.getAttribute('value') ?? '').hash),
+    )
     expect(decoded).toEqual(seeded)
+  })
+
+  it('has a Slack tab, between Share and Help, with no count badge', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText(/No names yet/i)).toBeInTheDocument()
+    })
+
+    const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '')
+    expect(tabs.map((t) => t.replace(/\s+\d+$/, ''))).toEqual([
+      'Names',
+      'Dates',
+      'Share',
+      'Slack',
+      'Help',
+    ])
+
+    const slackTab = screen.getByRole('tab', { name: 'Slack' })
+    expect(slackTab).toHaveTextContent(/^Slack$/)
+    await user.click(slackTab)
+    expect(slackTab).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('heading', { name: /Post this to Slack/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('the Slack message carries the live share link, and the panel unmounts on exit', async () => {
+    const user = userEvent.setup()
+    const seeded: RotationState = {
+      v: 2,
+      title: 'Bins',
+      names: ['Ada', 'Grace'],
+      slots: ['2026-09-21T09:00'],
+      groupSize: 1,
+    }
+    window.history.replaceState(null, '', `/#s=${await encode(seeded)}`)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name 1')).toHaveValue('Ada')
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Slack' }))
+    const area = screen.getByRole('textbox', { name: 'Slack message' })
+    const message = (area as HTMLTextAreaElement).value
+    // The link in the message is the real one, in mrkdwn's <url|label> form. This is what
+    // makes a pasted message a rotation the reader can open, rather than a screenshot.
+    expect(message).toContain(`<${window.location.href}|Open or edit this rotation>`)
+    expect(message).toContain('*Bins*')
+    expect(message).toContain('Ada')
+
+    await user.click(screen.getByRole('checkbox', { name: /will notify those people/i }))
+    expect((area as HTMLTextAreaElement).value).toContain('@Ada')
+
+    // Not keepMounted: leaving the tab takes the message — and its hidden duplicate of
+    // every name in the rotation — back out of the DOM, and resets mentions to off.
+    await user.click(screen.getByRole('tab', { name: /Names/ }))
+    expect(screen.queryByRole('textbox', { name: 'Slack message' })).toBeNull()
+    expect(screen.queryByText(/Open or edit this rotation/)).toBeNull()
+    await user.click(screen.getByRole('tab', { name: 'Slack' }))
+    expect(
+      screen.getByRole('checkbox', { name: /will notify those people/i }),
+    ).not.toBeChecked()
   })
 
   it('warns from the tab strip when the link gets too long to send', async () => {
