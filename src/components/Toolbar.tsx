@@ -1,3 +1,5 @@
+
+
 interface Props {
   title: string
   onTitleChange: (title: string) => void
@@ -9,22 +11,22 @@ interface Props {
 /**
  * Purely decorative mascot (a hardstyle shuffle loop), hotlinked from Tenor. This is the
  * 220x124 variant the share page declares as its og:image, not the 498x280 or 640x360 ones
- * -- it renders at 3rem tall, so the bigger files buy nothing but bytes.
  *
- *  - alt="" + aria-hidden keep it out of the accessibility tree entirely
+ * Four things keep it from becoming a liability:
+ *  - width/height are fixed, so it reserves its box and cannot shift the toolbar as it loads
+ *  - onError hides it, so a changed or blocked Tenor URL leaves a gap rather than a broken
+ *    image icon in the middle of the top bar
  *  - CSS hides it under prefers-reduced-motion: a looping GIF is moving content that cannot
  *    be paused (WCAG 2.2.2), and since it carries no information, hiding it costs nothing
- *
- * Deliberately NOT handled, since this is only a joke: there are no width/height attributes,
- * so the toolbar shifts slightly when the GIF lands, and no onError, so a dead Tenor URL
- * shows a broken-image icon. Both are two lines away if they ever become annoying.
+ *  - alt="" + aria-hidden keep it out of the accessibility tree entirely
  *
  * It is the app's only third-party runtime request. If that ever matters more than the
  * joke, Tenor also publishes mp4/webm variants, and a muted looping <video> would be both
  * smaller and actually pausable.
  */
 const MASCOT_SRC =
-  'https://media.tenor.com/5Y9zxgcoTWEAAAAM/hardstyle-shuffle-hardstyle.gif'
+  'hardstyle.gif'
+
 
 export default function Toolbar({
   title,
@@ -33,6 +35,7 @@ export default function Toolbar({
   onReset,
   canShuffle,
 }: Props) {
+
   return (
     <div className="toolbar">
       <img
