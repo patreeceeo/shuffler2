@@ -16,7 +16,7 @@ npm run test -- --run
 npm run lint
 npm run build      # tsc --noEmit && vite build -> dist/
 npm run preview
-npm run e2e        # playwright smoke test (needs `npx playwright install chromium`)
+npm run e2e        # playwright smoke test — run `npx playwright install chromium` first
 ```
 
 ## Deploying to GitHub Pages
@@ -35,6 +35,18 @@ redirect hack is needed.
 
 If this is served from a custom domain, add a `CNAME` file to `public/` so the domain
 survives each deploy.
+
+## What the app is made of
+
+| Where                           | What it does                                                                                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/state/codec.ts`            | State <-> the `#s=` blob. Positional tuple, delta-encoded slots, native `CompressionStream('deflate-raw')`, base64url. `decode()` never throws. |
+| `src/state/schema.ts`           | The valibot schema, which doubles as the wire-format documentation, plus the caps that stop a hostile link hanging the render.                  |
+| `src/state/legacy.ts`           | Imports v1 `?items=…&randomizer=…` links, including v1's Lehmer-style permutation index.                                                        |
+| `src/state/useRotationState.ts` | The only code that touches `location`. Debounced writes, push/replace history, echo-loop guard.                                                 |
+| `src/lib/dates.ts`              | Calendar arithmetic and formatting. The two rules this file exists to enforce are at the top of it.                                             |
+| `src/lib/schedule.ts`           | `derive(state)` — positional round-robin. The schedule is never stored.                                                                         |
+| `src/lib/shuffle.ts`            | Fisher-Yates over `crypto.getRandomValues`, rejection-sampled so it is unbiased.                                                                |
 
 ## Notes for maintainers
 

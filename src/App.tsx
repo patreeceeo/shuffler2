@@ -1,14 +1,28 @@
+import { useEffect } from 'react'
 import { useRotationState } from './state/useRotationState'
 import { EMPTY_STATE, normalizeSlots } from './state/schema'
+import { derive, toTextTable } from './lib/schedule'
+import { shuffle } from './lib/shuffle'
+import { formatSlot } from './lib/dates'
 import NameList from './components/NameList'
 import RecurrenceBuilder from './components/RecurrenceBuilder'
-import SlotList from './components/SlotList'
+import ScheduleTable from './components/ScheduleTable'
 import ShareBar from './components/ShareBar'
+import SlotList from './components/SlotList'
 import Toolbar from './components/Toolbar'
 
 export default function App() {
   const { state, ready, corrupted, dismissCorrupted, update, shareUrl } =
     useRotationState()
+  const schedule = derive(state)
+
+  // <title> follows the rotation title, so a tab full of shared links stays legible.
+  // In an effect, not during render: writing document.title while rendering is a
+  // Rules-of-React violation the compiler's lint rules reject.
+  const trimmedTitle = state.title.trim()
+  useEffect(() => {
+    document.title = trimmedTitle.length > 0 ? `${trimmedTitle} — Shuffler` : 'Shuffler'
+  }, [trimmedTitle])
 
   return (
     <main className="container app">
@@ -18,12 +32,13 @@ export default function App() {
           update((prev) => ({ ...prev, title }))
         }}
         onShuffle={() => {
-          /* wired up in M4 */
+          // Discrete action: pushState, so the browser back button is undo (§4.1).
+          update((prev) => ({ ...prev, names: shuffle(prev.names) }), 'push')
         }}
         onReset={() => {
           update(EMPTY_STATE, 'push')
         }}
-        canShuffle={false}
+        canShuffle={state.names.length > 1}
       />
 
       {corrupted && (
@@ -54,8 +69,7 @@ export default function App() {
           <RecurrenceBuilder
             slotCount={state.slots.length}
             onGenerate={(slots) => {
-              // Append and de-duplicate; generate never wipes what is there (PLAN §5).
-              // Discrete action, so it earns a history entry and the back button undoes it.
+              // Append and de-duplicate; generate never wipes what is there (§5).
               update(
                 (prev) => ({ ...prev, slots: normalizeSlots([...prev.slots, ...slots]) }),
                 'push',
@@ -78,9 +92,18 @@ export default function App() {
             }}
           />
         </div>
+
+        <ScheduleTable
+          schedule={schedule}
+          hasNames={state.names.length > 0}
+          hasSlots={state.slots.length > 0}
+        />
       </div>
 
-      <ShareBar url={ready ? shareUrl : ''} textTable={state.names.join('\n')} />
+      <ShareBar
+        url={ready ? shareUrl : ''}
+        textTable={toTextTable(state, schedule, formatSlot)}
+      />
     </main>
   )
 }

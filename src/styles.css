@@ -278,3 +278,57 @@
 .slot-row input[type='time'] {
   flex: 0 0 7rem;
 }
+
+/* Schedule -------------------------------------------------------------- */
+
+.schedule-scroll {
+  max-height: 32rem;
+  overflow-y: auto;
+}
+
+table.schedule {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+table.schedule thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--pico-background-color);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pico-muted-color);
+}
+
+table.schedule td {
+  vertical-align: top;
+}
+
+.month-head {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pico-muted-color);
+}
+
+.tallies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin-top: 0.9rem;
+  font-size: 0.8rem;
+  color: var(--pico-muted-color);
+}
+
+.tallies span {
+  font-variant-numeric: tabular-nums;
+}
+
+.tallies.uneven .uneven-note {
+  flex-basis: 100%;
+  color: var(--pico-del-color, #b3261e);
+}

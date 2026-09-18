@@ -23,5 +23,11 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/test/setup.ts', './src/test/dom-setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Constructing a jsdom environment costs ~25s in this VM, so a fresh one per file
+    // makes the suite unusable. One forked process, environment reused across files;
+    // every DOM test calls cleanup() in afterEach, which is what makes that safe.
+    isolate: false,
+    pool: 'forks',
+    maxWorkers: 1,
   },
 })
