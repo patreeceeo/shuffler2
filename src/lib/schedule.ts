@@ -94,7 +94,6 @@ export function toTextTable(
     lines.push(`${left[i]!.padEnd(width)}  ${assignment.names.join(', ')}`)
   })
   lines.push('')
-  lines.push(schedule.tallies.map((t) => `${t.name} ${String(t.count)}`).join(' · '))
   if (url.length > 0) lines.push(`made with Shuffler2: ${url}`)
   return lines.join('\n')
 }
