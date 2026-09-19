@@ -107,10 +107,10 @@ export function toRemindCommands(schedule: Schedule, options: RemindOptions): st
     const handles = assignment.names.map(toHandle).filter((h) => h.length > 0).join(' ')
     // The turn's own time leads the text, so a reminder that arrives early still says
     // plainly when the turn actually is. The trailing time is when Slack fires it.
-    const turn = formatWhen(assignment.slot)
-    const subject = what.length > 0 ? `your turn ${turn}: ${what}` : `your turn ${turn}`
+    const when = formatWhen(assignment.slot)
+    const subject = what.length > 0 ? `your ${what} turn on ${when}!` : `your turn on ${when}`
     const fires = formatWhen(shiftEarlier(assignment.slot, hours))
-    return `/remind #${channel} "${handles} ${subject}" ${fires}`
+    return `/remind #${channel} ${handles} ${subject} ${fires}`
   })
 }
 
