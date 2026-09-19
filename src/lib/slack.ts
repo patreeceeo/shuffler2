@@ -1,4 +1,5 @@
 import type { Schedule } from './schedule'
+import { parseSlot, toSlot } from './dates'
 
 /**
  * Generates Slack `/remind` commands for a rotation — pure string work, nothing more.
@@ -17,6 +18,35 @@ import type { Schedule } from './schedule'
  * through Date — no timezone can be introduced and no `toISOString()` can creep in.
  */
 
+/** A week of lead time is already absurd for a chore rota; past that it is a typo. */
+export const MAX_HOURS_BEFORE = 168
+
+/**
+ * The slot, moved earlier by `hours`.
+ *
+ * This goes through `parseSlot`/`toSlot` — i.e. `Temporal.PlainDateTime` — rather than
+ * doing string maths, because subtracting hours crosses midnight, month ends and years.
+ * "2 hours before 2026-01-01T01:00" is 2025-12-31T23:00, and only calendar arithmetic
+ * gets that right. The value stays a floating wall-clock string throughout, so no
+ * timezone is introduced (PLAN §3.5).
+ */
+export function shiftEarlier(slot: string, hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return slot
+  const parsed = parseSlot(slot)
+  if (parsed === null) return slot
+  return toSlot(parsed.subtract({ hours: Math.min(Math.floor(hours), MAX_HOURS_BEFORE) }))
+}
+
+/**
+ * The reminder text is wrapped in double quotes so Slack knows where it ends and the time
+ * expression begins — necessary because the text now contains a date of its own. That makes
+ * a literal `"` a delimiter, so it cannot survive inside a name or title: one would close
+ * the text early and hand the rest to Slack's time parser.
+ */
+function stripQuotes(text: string): string {
+  return text.replace(/["\u201c\u201d]/g, '')
+}
+
 /** Broadcast tokens that would ping an entire channel if a name happened to spell one. */
 const BROADCASTS = new Set(['channel', 'here', 'everyone'])
 
@@ -29,7 +59,7 @@ const BROADCASTS = new Set(['channel', 'here', 'everyone'])
  *    pasting these ping their whole workspace
  */
 export function toHandle(name: string): string {
-  const flat = name.replace(/\s+/g, ' ').trim().replace(/^@+/, '')
+  const flat = stripQuotes(name).replace(/\s+/g, ' ').trim().replace(/^@+/, '')
   if (flat.length === 0) return ''
   if (BROADCASTS.has(flat.toLowerCase())) return flat
   return `@${flat}`
@@ -56,6 +86,11 @@ export interface RemindOptions {
   channel: string
   /** Rotation title, used as the thing being reminded about. */
   title: string
+  /**
+   * How many hours before the turn the reminder should fire. 0 means at the turn itself.
+   * The wording changes with it, so a reminder that arrives early says so.
+   */
+  hoursBefore?: number
 }
 
 /**
@@ -66,11 +101,16 @@ export function toRemindCommands(schedule: Schedule, options: RemindOptions): st
   if (schedule.empty) return []
   const channel = normalizeChannel(options.channel)
   if (channel.length === 0) return []
-  const what = options.title.replace(/\s+/g, ' ').trim()
+  const what = stripQuotes(options.title).replace(/\s+/g, ' ').trim()
+  const hours = options.hoursBefore ?? 0
   return schedule.assignments.map((assignment) => {
     const handles = assignment.names.map(toHandle).filter((h) => h.length > 0).join(' ')
-    const subject = what.length > 0 ? `your turn: ${what}` : 'your turn'
-    return `/remind #${channel} ${handles} ${subject} ${formatWhen(assignment.slot)}`
+    // The turn's own time leads the text, so a reminder that arrives early still says
+    // plainly when the turn actually is. The trailing time is when Slack fires it.
+    const turn = formatWhen(assignment.slot)
+    const subject = what.length > 0 ? `your turn ${turn}: ${what}` : `your turn ${turn}`
+    const fires = formatWhen(shiftEarlier(assignment.slot, hours))
+    return `/remind #${channel} "${handles} ${subject}" ${fires}`
   })
 }
 

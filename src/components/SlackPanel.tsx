@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Schedule } from '../lib/schedule'
-import { toRemindScript } from '../lib/slack'
+import { MAX_HOURS_BEFORE, toRemindScript } from '../lib/slack'
 
 interface Props {
   schedule: Schedule
@@ -20,8 +20,12 @@ interface Props {
  */
 export default function SlackPanel({ schedule, title }: Props) {
   const [channel, setChannel] = useState('')
+  // Kept as a string, not a number: an <input type="number"> can legitimately be empty
+  // mid-typing, and coercing that to 0 fights the user's cursor.
+  const [hoursBefore, setHoursBefore] = useState('0')
   const [copied, setCopied] = useState(false)
   const channelId = useId()
+  const hoursId = useId()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
 
@@ -32,7 +36,8 @@ export default function SlackPanel({ schedule, title }: Props) {
     [],
   )
 
-  const script = toRemindScript(schedule, { channel, title })
+  const hours = Math.min(Math.max(Math.floor(Number(hoursBefore) || 0), 0), MAX_HOURS_BEFORE)
+  const script = toRemindScript(schedule, { channel, title, hoursBefore: hours })
   const hasCommands = !schedule.empty && channel.trim().length > 0
 
   const copy = () => {
@@ -73,6 +78,21 @@ export default function SlackPanel({ schedule, title }: Props) {
         />
       </label>
 
+      <label htmlFor={hoursId} className="slack-channel">
+        Hours before the turn to remind
+        <input
+          id={hoursId}
+          type="number"
+          min={0}
+          max={MAX_HOURS_BEFORE}
+          step={1}
+          value={hoursBefore}
+          onChange={(event) => {
+            setHoursBefore(event.target.value)
+          }}
+        />
+      </label>
+
       <label className="slack-message">
         <span className="visually-hidden">Slack /remind commands</span>
         <textarea
@@ -92,7 +112,8 @@ export default function SlackPanel({ schedule, title }: Props) {
         Paste these into any Slack message box, one at a time — Slack runs each as you send
         it. Names are used as Slack usernames, so they need to match the handles in your
         workspace. Slack does not let you set a reminder for someone else, so each reminder
-        posts in the channel and @-mentions whoever is up.
+        posts in the channel and @-mentions whoever is up. Lead time of 0 reminds at the
+        turn itself; anything more shifts the reminder earlier, across midnight where needed.
       </p>
     </section>
   )

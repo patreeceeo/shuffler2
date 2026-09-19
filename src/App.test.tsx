@@ -419,8 +419,8 @@ describe('App end to end (jsdom)', () => {
     await user.type(screen.getByLabelText(/Channel/i), 'chores')
     expect(screen.getByLabelText('Slack /remind commands')).toHaveValue(
       [
-        '/remind #chores @ada your turn: Dish duty 9/21/2026 at 9:00am',
-        '/remind #chores @grace your turn: Dish duty 9/28/2026 at 5:30pm',
+        '/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 9:00am',
+        '/remind #chores "@grace your turn 9/28/2026 at 5:30pm: Dish duty" 9/28/2026 at 5:30pm',
       ].join('\n'),
     )
   })

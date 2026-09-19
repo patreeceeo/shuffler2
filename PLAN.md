@@ -812,3 +812,24 @@ arrives from a link someone else may have crafted:
 **The mrkdwn escaping question is now moot** — slash commands are not mrkdwn, so nothing is
 HTML-escaped and `Tom & Jerry` reads correctly. The open question recorded earlier (whether
 Slack's composer decodes `&amp;` on paste) no longer affects this app.
+
+### 12.2 Lead time
+
+A second input sets how many hours *before* the turn the reminder fires (0 = at the turn,
+capped at one week). Each command therefore carries **two times**: the turn's own time inside
+the reminder text, and the firing time at the end where Slack parses it.
+
+```
+/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 7:00am
+```
+
+Two things this forced:
+
+- **The reminder text is now quoted.** With a date inside the text, Slack needs a delimiter to
+  know where the text stops and the time expression starts; its docs show quoted reminder text
+  for exactly this. That makes `"` a delimiter, so `stripQuotes` removes it from names and
+  titles — one would otherwise close the text early and feed the remainder to the time parser.
+- **Subtraction goes through `Temporal.PlainDateTime`** (`parseSlot`/`toSlot` from
+  `lib/dates.ts`), not string maths. Lead time crosses midnight, month ends and years: 2 hours
+  before `2026-01-01T01:00` is `2025-12-31T23:00`. Both are pinned by tests, as is the leap-day
+  case (1 hour before `2026-03-01T00:30` is `2026-02-28T23:30`).
