@@ -172,7 +172,9 @@ describe('toTextTable', () => {
     const text = toTextTable(s, derive(s), (slot) => slot)
     expect(text).toContain('Dish duty')
     expect(text).toContain('2026-09-21T09:00  Ada')
-    expect(text).toContain('Ada 1 · Grace 1 · Linus 1')
+    // Tallies were deliberately removed from the text table (928fdcf); the schedule
+    // panel still shows them, the pasteable table does not.
+    expect(text).not.toMatch(/Ada 1/)
   })
 
   it('says so rather than crashing when there is nothing to show', () => {

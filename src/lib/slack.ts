@@ -113,12 +113,3 @@ export function toRemindCommands(schedule: Schedule, options: RemindOptions): st
     return `/remind #${channel} ${handles} ${subject} ${fires}`
   })
 }
-
-/** The whole textarea body, including the empty-state explanations. */
-export function toRemindScript(schedule: Schedule, options: RemindOptions): string {
-  if (schedule.empty) return 'Add some names and some dates first.'
-  if (normalizeChannel(options.channel).length === 0) {
-    return 'Enter a channel name above to generate the reminder commands.'
-  }
-  return toRemindCommands(schedule, options).join('\n')
-}

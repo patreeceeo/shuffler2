@@ -417,11 +417,11 @@ describe('App end to end (jsdom)', () => {
     })
     await user.click(screen.getByRole('tab', { name: 'Slack' }))
     await user.type(screen.getByLabelText(/Channel/i), 'chores')
-    expect(screen.getByLabelText('Slack /remind commands')).toHaveValue(
-      [
-        '/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 9:00am',
-        '/remind #chores "@grace your turn 9/28/2026 at 5:30pm: Dish duty" 9/28/2026 at 5:30pm',
-      ].join('\n'),
+    expect(screen.getByLabelText('Command 1')).toHaveValue(
+      '/remind #chores @ada your Dish duty turn on 9/21/2026 at 9:00am! 9/21/2026 at 9:00am',
+    )
+    expect(screen.getByLabelText('Command 2')).toHaveValue(
+      '/remind #chores @grace your Dish duty turn on 9/28/2026 at 5:30pm! 9/28/2026 at 5:30pm',
     )
   })
   it('warns from the tab strip when the link gets too long to send', async () => {

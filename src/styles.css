@@ -497,11 +497,35 @@ table.schedule td {
   margin: 0;
 }
 
-.slack-message textarea {
+.slack-commands {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.slack-command {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* The command is long and its tail (the firing time) is the part worth reading, so let the
+   field scroll rather than wrap, and keep it monospace so the quoting is legible. */
+.slack-command input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   font-family: var(--pico-font-family-monospace);
-  font-size: 0.8rem;
-  line-height: 1.45;
-  white-space: pre;
-  overflow-x: auto;
-  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.slack-command button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding-block: 0.4rem;
+  font-size: 0.78rem;
 }

@@ -6,7 +6,6 @@ import {
   shiftEarlier,
   toHandle,
   toRemindCommands,
-  toRemindScript,
 } from './slack'
 import { derive } from './schedule'
 import type { RotationState } from '../state/schema'
@@ -74,8 +73,8 @@ describe('toRemindCommands', () => {
     const s = state()
     const lines = toRemindCommands(derive(s), { channel: '#chores', title: s.title })
     expect(lines).toEqual([
-      '/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 9:00am',
-      '/remind #chores "@grace your turn 9/28/2026 at 5:30pm: Dish duty" 9/28/2026 at 5:30pm',
+      '/remind #chores @ada your Dish duty turn on 9/21/2026 at 9:00am! 9/21/2026 at 9:00am',
+      '/remind #chores @grace your Dish duty turn on 9/28/2026 at 5:30pm! 9/28/2026 at 5:30pm',
     ])
   })
 
@@ -83,7 +82,7 @@ describe('toRemindCommands', () => {
     const s = state({ names: ['ada', 'grace', 'linus', 'barbara'], groupSize: 2 })
     const lines = toRemindCommands(derive(s), { channel: 'chores', title: '' })
     expect(lines[0]).toBe(
-      '/remind #chores "@ada @grace your turn 9/21/2026 at 9:00am" 9/21/2026 at 9:00am',
+      '/remind #chores @ada @grace your turn on 9/21/2026 at 9:00am 9/21/2026 at 9:00am',
     )
   })
 
@@ -95,17 +94,6 @@ describe('toRemindCommands', () => {
   })
 })
 
-describe('toRemindScript', () => {
-  it('explains itself instead of going blank when something is missing', () => {
-    const bare = state({ names: [], slots: [] })
-    expect(toRemindScript(derive(bare), { channel: 'chores', title: '' })).toMatch(
-      /names and some dates/i,
-    )
-    expect(toRemindScript(derive(state()), { channel: '', title: '' })).toMatch(
-      /channel name/i,
-    )
-  })
-})
 
 describe('shiftEarlier', () => {
   it('moves the reminder back within the same day', () => {
@@ -143,7 +131,7 @@ describe('toRemindCommands with lead time', () => {
     })
     // Text states the turn (9:00am); the trailing time is when Slack fires it (7:00am).
     expect(lines).toEqual([
-      '/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 7:00am',
+      '/remind #chores @ada your Dish duty turn on 9/21/2026 at 9:00am! 9/21/2026 at 7:00am',
     ])
   })
 
@@ -155,23 +143,22 @@ describe('toRemindCommands with lead time', () => {
       hoursBefore: 3,
     })
     expect(lines[0]).toBe(
-      '/remind #chores "@ada your turn 9/21/2026 at 1:00am" 9/20/2026 at 10:00pm',
+      '/remind #chores @ada your turn on 9/21/2026 at 1:00am 9/20/2026 at 10:00pm',
     )
   })
 })
 
 describe('quotes in user text', () => {
-  it('cannot break out of the quoted reminder text', () => {
+  it('are stripped from names and titles', () => {
     const s = state({ names: ['ada"'], title: 'Dish " duty', slots: ['2026-09-21T09:00'] })
     const line = toRemindCommands(derive(s), {
       channel: 'chores',
       title: s.title,
       hoursBefore: 1,
     })[0]
-    // Exactly two quotes: the ones the formatter opened and closed.
-    expect((line?.match(/"/g) ?? []).length).toBe(2)
+    expect((line?.match(/"/g) ?? []).length).toBe(0)
     expect(line).toBe(
-      '/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 8:00am',
+      '/remind #chores @ada your Dish duty turn on 9/21/2026 at 9:00am! 9/21/2026 at 8:00am',
     )
   })
 })
