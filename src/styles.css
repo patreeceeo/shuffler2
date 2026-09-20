@@ -296,21 +296,18 @@ table.schedule td {
   vertical-align: top;
 }
 
+/* Subtle zebra striping on data rows. Pico's stripe colour is a faint translucent grey,
+   so it works in both light and dark mode. */
+table.schedule tbody tr:nth-child(even) td {
+  background-color: var(--pico-table-row-stripped-background-color);
+}
+
 /* The +gcal link column: only as wide as its content, right-aligned. */
 table.schedule .gcal-cell {
   width: 1%;
   white-space: nowrap;
   text-align: right;
   font-size: 0.8rem;
-}
-
-.month-head {
-  display: block;
-  margin-top: 0.4rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--pico-muted-color);
 }
 
 .tallies {

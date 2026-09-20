@@ -323,8 +323,9 @@ upcoming Monday, 09:00, 12 occurrences. `Generate` **appends** and de-duplicates
 silently wipes what is there. Manual slots below it add, edit, delete individually. Slots
 stay sorted ascending at all times.
 
-**Schedule panel.** The live result: date, time, assigned name(s), grouped by month with
-sticky headers. A per-person count footer, because the first question anyone asks a rotation
+**Schedule panel.** The live result: date, time, assigned name(s), under a
+sticky column header. (It was first built grouped by month, with a heading on the first
+row of each month; those headings were removed.) A per-person count footer, because the first question anyone asks a rotation
 tool is "is this actually even?" — round-robin is even only when
 `(slots.length * groupSize) % names.length === 0`, so surface the imbalance rather than hide
 it.

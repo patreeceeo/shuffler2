@@ -141,11 +141,6 @@ const TIME_OPTS: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
 }
 
-const MONTH_OPTS: Intl.DateTimeFormatOptions = {
-  month: 'long',
-  year: 'numeric',
-}
-
 /**
  * Formats via Temporal's own toLocaleString, which takes the plain calendar fields
  * straight to Intl. No instant, no offset, so no day-early bug.
@@ -167,20 +162,6 @@ export function formatSlot(slot: Slot): string {
   if (!parsed) return slot
   const date = parsed.toPlainDate().toLocaleString(undefined, DATE_OPTS)
   return `${date}, ${formatSlotTime(slot)}`
-}
-
-/** "2026-09" — the grouping key for the schedule's month headings. */
-export function monthKey(slot: Slot): string {
-  return slot.slice(0, 7)
-}
-
-export function monthLabel(key: string): string {
-  try {
-    const month = Temporal.PlainYearMonth.from(key, { overflow: 'reject' })
-    return month.toPlainDate({ day: 1 }).toLocaleString(undefined, MONTH_OPTS)
-  } catch {
-    return key
-  }
 }
 
 /** The date part of a slot, for a <input type="date"> value. */

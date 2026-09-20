@@ -5,8 +5,6 @@ import {
   formatSlot,
   formatSlotDate,
   formatSlotTime,
-  monthKey,
-  monthLabel,
   nextWeekday,
   parseSlot,
   slotFromInputs,
@@ -184,18 +182,6 @@ describe('formatting never goes through UTC (the exact bug v1 shipped)', () => {
     expect(formatSlot('garbage')).toBe('garbage')
     expect(formatSlotDate('garbage')).toBe('garbage')
     expect(formatSlotTime('garbage')).toBe('garbage')
-  })
-})
-
-describe('month grouping', () => {
-  it('keys by year and month', () => {
-    expect(monthKey('2026-09-21T09:00')).toBe('2026-09')
-    expect(monthKey('2026-12-01T00:00')).toBe('2026-12')
-  })
-
-  it('labels a month readably', () => {
-    expect(monthLabel('2026-09')).toMatch(/September|Sep/)
-    expect(monthLabel('2026-09')).toContain('2026')
   })
 })
 

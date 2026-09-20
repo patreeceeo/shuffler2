@@ -1,5 +1,5 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
-import { formatSlot, monthKey, monthLabel } from '../lib/dates'
+import { formatSlot } from '../lib/dates'
 import { gcalLink } from '../lib/gcal'
 import type { Schedule } from '../lib/schedule'
 
@@ -38,14 +38,6 @@ export default function ScheduleTable({
     )
   }
 
-  // Precomputed rather than tracked with a mutable cursor inside the map: reassigning a
-  // variable during render is exactly what the compiler's immutability rule forbids.
-  const monthStarts = schedule.assignments.map(
-    (assignment, index) =>
-      index === 0 ||
-      monthKey(assignment.slot) !== monthKey(schedule.assignments[index - 1]!.slot),
-  )
-
   return (
     <section aria-labelledby="schedule-heading">
       <h2 id="schedule-heading">Schedule</h2>
@@ -61,31 +53,24 @@ export default function ScheduleTable({
             </tr>
           </thead>
           <tbody ref={bodyRef}>
-            {schedule.assignments.map((assignment, index) => {
-              const key = monthKey(assignment.slot)
-              const isNewMonth = monthStarts[index] === true
-              return (
-                <tr key={`${assignment.slot}-${String(assignment.index)}`}>
-                  <td>
-                    {isNewMonth && <span className="month-head">{monthLabel(key)}</span>}
-                    {formatSlot(assignment.slot)}
-                  </td>
-                  {/* Plain text, always. Names arrive from a link a stranger may have
+            {schedule.assignments.map((assignment) => (
+              <tr key={`${assignment.slot}-${String(assignment.index)}`}>
+                <td>{formatSlot(assignment.slot)}</td>
+                {/* Plain text, always. Names arrive from a link a stranger may have
                       sent; dangerouslySetInnerHTML here is the v1 stored-XSS bug. */}
-                  <td>{assignment.names.join(', ')}</td>
-                  <td className="gcal-cell">
-                    <GcalLink
-                      href={gcalLink({
-                        slot: assignment.slot,
-                        names: assignment.names,
-                        title,
-                        url: shareUrl,
-                      })}
-                    />
-                  </td>
-                </tr>
-              )
-            })}
+                <td>{assignment.names.join(', ')}</td>
+                <td className="gcal-cell">
+                  <GcalLink
+                    href={gcalLink({
+                      slot: assignment.slot,
+                      names: assignment.names,
+                      title,
+                      url: shareUrl,
+                    })}
+                  />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
