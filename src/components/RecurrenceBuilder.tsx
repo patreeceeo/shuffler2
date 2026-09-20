@@ -1,5 +1,10 @@
 import { useId, useState } from 'react'
-import { expandRecurrence, nextWeekday, todayAt, type RecurrenceUnit } from '../lib/dates'
+import {
+  expandRecurrence,
+  nextWeekday,
+  slotFromInputs,
+  type RecurrenceUnit,
+} from '../lib/dates'
 import { MAX_SLOTS, type Slot } from '../state/schema'
 
 const WEEKDAYS: { value: number; label: string }[] = [
@@ -11,6 +16,9 @@ const WEEKDAYS: { value: number; label: string }[] = [
   { value: 6, label: 'Saturday' },
   { value: 7, label: 'Sunday' },
 ]
+
+/** Upper bound for the "every [N]" input. */
+const MAX_INTERVAL = 52
 
 interface Props {
   /** Appends and de-duplicates — it never silently wipes what is there (PLAN §5). */
@@ -37,7 +45,8 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
     manualTime: useId(),
   }
 
-  const [interval, setInterval] = useState(1)
+  // Named `every`, not `interval`, so its setter does not shadow window.setInterval.
+  const [every, setEvery] = useState(1)
   const [unit, setUnit] = useState<RecurrenceUnit>('week')
   const [weekday, setWeekday] = useState(1)
   const [time, setTime] = useState('09:00')
@@ -47,16 +56,17 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
   const [manualDate, setManualDate] = useState(defaultStartDate)
   const [manualTime, setManualTime] = useState('09:00')
 
-  const start = todayAt(date, time)
+  const start = slotFromInputs(date, time)
   const preview = start
     ? expandRecurrence({
-        interval,
+        interval: every,
         unit,
         weekday: unit === 'week' ? weekday : null,
         start,
         count,
       })
     : []
+  const manualSlot = slotFromInputs(manualDate, manualTime)
   const remaining = MAX_SLOTS - slotCount
 
   return (
@@ -72,10 +82,10 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
           id={ids.interval}
           type="number"
           min={1}
-          max={52}
-          value={interval}
+          max={MAX_INTERVAL}
+          value={every}
           onChange={(event) => {
-            setInterval(clamp(event.target.value, 1, 52, 1))
+            setEvery(clamp(event.target.value, 1, MAX_INTERVAL, 1))
           }}
         />
         <label htmlFor={ids.unit} className="visually-hidden">
@@ -88,9 +98,9 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
             setUnit(event.target.value as RecurrenceUnit)
           }}
         >
-          <option value="day">{interval === 1 ? 'day' : 'days'}</option>
-          <option value="week">{interval === 1 ? 'week' : 'weeks'}</option>
-          <option value="month">{interval === 1 ? 'month' : 'months'}</option>
+          <option value="day">{every === 1 ? 'day' : 'days'}</option>
+          <option value="week">{every === 1 ? 'week' : 'weeks'}</option>
+          <option value="month">{every === 1 ? 'month' : 'months'}</option>
         </select>
 
         {unit === 'week' && (
@@ -202,10 +212,9 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
           type="button"
           className="secondary"
           onClick={() => {
-            const slot = todayAt(manualDate, manualTime)
-            if (slot) onAddSlot(slot)
+            if (manualSlot) onAddSlot(manualSlot)
           }}
-          disabled={todayAt(manualDate, manualTime) === null || remaining <= 0}
+          disabled={manualSlot === null || remaining <= 0}
         >
           + Add a date
         </button>
@@ -214,6 +223,7 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
   )
 }
 
+/** Parses a number input's value, rounds it and clamps it to [min, max]. */
 function clamp(raw: string, min: number, max: number, fallback: number): number {
   const parsed = Number(raw)
   if (!Number.isFinite(parsed)) return fallback

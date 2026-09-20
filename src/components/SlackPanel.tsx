@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Schedule } from '../lib/schedule'
 import { MAX_HOURS_BEFORE, toRemindCommands } from '../lib/slack'
+import { useCopyFeedback } from './useCopyFeedback'
 
 interface Props {
   schedule: Schedule
@@ -27,48 +28,23 @@ export default function SlackPanel({ schedule, title }: Props) {
   // Kept as a string, not a number: an <input type="number"> can legitimately be empty
   // mid-typing, and coercing that to 0 fights the user's cursor.
   const [hoursBefore, setHoursBefore] = useState('0')
-  /** Index of the row whose Copy button just fired, so only that row says "Copied". */
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  /** Keyed by row index, so only the row whose button fired says "Copied". */
+  const { copied: copiedIndex, copy } = useCopyFeedback<number>()
   const channelId = useId()
   const hoursId = useId()
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputs = useRef(new Map<number, HTMLInputElement>())
 
-  useEffect(
-    () => () => {
-      if (timer.current !== null) clearTimeout(timer.current)
-    },
-    [],
+  const hours = Math.min(
+    Math.max(Math.floor(Number(hoursBefore) || 0), 0),
+    MAX_HOURS_BEFORE,
   )
-
-  const hours = Math.min(Math.max(Math.floor(Number(hoursBefore) || 0), 0), MAX_HOURS_BEFORE)
   const commands = toRemindCommands(schedule, { channel, title, hoursBefore: hours })
-
-  const copy = (index: number, text: string) => {
-    const done = () => {
-      setCopiedIndex(index)
-      if (timer.current !== null) clearTimeout(timer.current)
-      timer.current = setTimeout(() => {
-        setCopiedIndex(null)
-      }, 1800)
-    }
-    // navigator.clipboard is missing on http:// origins and in some embeds; fall back to
-    // selecting that row's field so Ctrl+C still works.
-    const fallback = () => {
-      inputs.current.get(index)?.select()
-    }
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).then(done, fallback)
-    } else {
-      fallback()
-    }
-  }
 
   return (
     <section className="slack-panel" aria-labelledby="slack-heading">
       <h2 id="slack-heading">Slack</h2>
 
-      <label htmlFor={channelId} className="slack-channel">
+      <label htmlFor={channelId} className="slack-field">
         Channel the reminders post in
         <input
           id={channelId}
@@ -82,7 +58,7 @@ export default function SlackPanel({ schedule, title }: Props) {
         />
       </label>
 
-      <label htmlFor={hoursId} className="slack-channel">
+      <label htmlFor={hoursId} className="slack-field">
         Hours before the turn to remind
         <input
           id={hoursId}
@@ -128,7 +104,7 @@ export default function SlackPanel({ schedule, title }: Props) {
                 className="secondary"
                 aria-label={`Copy command ${String(index + 1)}`}
                 onClick={() => {
-                  copy(index, command)
+                  copy(index, command, () => inputs.current.get(index)?.select())
                 }}
               >
                 {copiedIndex === index ? 'Copied' : 'Copy'}
@@ -139,9 +115,10 @@ export default function SlackPanel({ schedule, title }: Props) {
       )}
 
       <p className="hint">
-        Paste these into any Slack message box, one per message — Slack runs each as you send
-        it. Names are used as Slack usernames, so they need to match up in your
-        workspace for the person to tagged. Lead time of 0 reminds at the turn itself; anything more shifts the reminder earlier, across midnight where needed.
+        Paste these into any Slack message box, one per message — Slack runs each as you
+        send it. Names are used as Slack usernames, so they need to match up in your
+        workspace for the person to be tagged. Lead time of 0 reminds at the turn itself;
+        anything more shifts the reminder earlier, across midnight where needed.
       </p>
     </section>
   )

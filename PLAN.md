@@ -6,6 +6,13 @@ no accounts.
 
 Successor to <https://zzt64.com/shuffler/> ("v1").
 
+> **How to read this document.** §1–§10 are the original plan, with corrections noted
+> inline where the build proved it wrong. §11 and §12 are build notes written as the work
+> landed. Where the plan and the code disagree, the code (and its tests) is current — fix
+> this file when you notice. Code comments cite sections of this file as `§n` or
+> `PLAN §n`, so keep section numbers stable. For a quick orientation, start with the
+> README.
+
 ---
 
 ## 1. What v1 does, and what carries forward
@@ -195,14 +202,16 @@ src/
   main.tsx
   App.tsx                     layout, wires the pieces together
   state/
-    schema.ts                 types, EMPTY_STATE, validate()
+    schema.ts                 types, EMPTY_STATE, validate(), normalizeSlots()
     codec.ts                  encode() / decode(), pure, heavily tested
     legacy.ts                 v1 ?items=… → RotationState
     useRotationState.ts       the one hook that owns state ↔ hash sync
   lib/
     dates.ts                  calendar arithmetic, recurrence expansion, formatting
     shuffle.ts                Fisher–Yates over crypto.getRandomValues
-    schedule.ts               derive(state) -> Assignment[]
+    schedule.ts               derive(state) -> Assignment[], toTextTable()
+    names.ts                  paste splitting, insert, move            (added in build)
+    slack.ts                  /remind command builder (§12)            (added in build)
   components/
     Toolbar.tsx               title, Shuffle, Reset
     NameList.tsx              add / edit / drag-reorder / delete, multi-line paste
@@ -210,6 +219,9 @@ src/
     SlotList.tsx              manual add / edit / delete of individual slots
     ScheduleTable.tsx         the WYSIWYG result
     ShareBar.tsx              URL, Copy, length meter
+    SlackPanel.tsx            Slack tab (§12)                          (added in build)
+    Help.tsx                  Help tab (§5)                            (added in build)
+    useCopyFeedback.ts        clipboard + "Copied" flash for Share/Slack (added in build)
 ```
 
 ### 4.1 The state hook
@@ -260,7 +272,7 @@ button, output updates as you type, exactly as v1 did.
 │  │ + add name│                                             │
 │  │ people per slot: [1]                                    │
 ├────────────────────────────────────────────────────────────┤
-│  └───────────┴────────────┴─ SHARE ─┴─ HELP ─┘             │
+│  └───────────┴────────────┴─ SHARE ─┴─ SLACK ─┴─ HELP ─┘   │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -415,7 +427,10 @@ free win.
 ### 9.2 The workflow
 
 `.github/workflows/deploy.yml`, using the first-party Pages actions rather than a
-`gh-pages` branch:
+`gh-pages` branch. The plan as first written is below; **the shipped workflow differs in
+two ways**: it builds with Node 22, and it runs `npm run lint` but **not the tests**
+(removed in `dcccef4`). Run the tests locally before
+pushing to `main`.
 
 ```yaml
 name: Deploy
@@ -450,7 +465,8 @@ jobs:
 One repo setting is required and is easy to miss: **Settings → Pages → Source must be
 "GitHub Actions"**, not "Deploy from a branch". Note it in the README.
 
-Tests and lint run before the build, so a red build never reaches Pages.
+As planned, tests and lint would run before the build so a red build never reached Pages.
+As shipped, only lint does.
 
 ### 9.3 Things that bite on Pages
 
@@ -682,154 +698,90 @@ None of it counts toward the JS budget, which is unchanged.
 
 ---
 
-## 12. The Slack tab — a paste helper, not an integration
+## 12. The Slack tab — `/remind` commands, not an integration
 
-The Slack tab generates a message formatted for Slack and hands it to you to paste. It makes
-**no network requests**, holds **no token and no webhook URL**, and schedules nothing.
+The Slack tab takes a **channel name** and a **lead time**, and emits one Slack `/remind`
+command per slot, each with its own Copy button. You paste them into Slack yourself. The
+app makes **no network requests**, holds **no token and no webhook URL**, and schedules
+nothing. Code: `src/lib/slack.ts` (pure, tested in `slack.test.ts`) and
+`src/components/SlackPanel.tsx`.
 
-That is not a first cut waiting to be finished. Three independent findings say the
-integration is not available to a page like this one, and anyone who tries to "complete" it
-will hit all three:
+```
+/remind #chores @ada your Dish duty turn on 9/21/2026 at 9:00am! 9/21/2026 at 7:00am
+```
+
+The text says when the turn is; the trailing time is when Slack fires the reminder (here,
+two hours early). With no title the text reads `your turn on …`.
+
+### 12.1 Why not a real integration
+
+Anyone tempted to "finish" this into an integration will hit three walls:
 
 1. **The Slack Web API sends no CORS headers** and is documented as server-side only. A
-   static page cannot call `chat.postMessage`, and cannot call `users.list` either — which
-   is why the tab offers a typed `@handle` rather than the proper `<@U01ABCDEF>` member-ID
-   mention: resolving a name to an ID needs an API call that cannot be made from here.
-2. **`reminders.add` is gone.** Slack began retiring the reminders API methods in March 2023
-   and now describes them as degraded or useless. Even with a token and a server, the app
-   could not create the recurring reminder; Workflow Builder is where that lives now.
-3. **A secret cannot live in this app's state.** The state _is_ a link people forward. A bot
-   token or an incoming-webhook URL stored in the link, in `localStorage` or in a config
-   file would hand posting rights to everyone who receives the link — which is the whole
-   distribution mechanism. There is nowhere in this architecture for a credential to hide.
+   static page cannot call `chat.postMessage` or `users.list` — which is also why names
+   are used as typed `@handle`s rather than proper `<@U01ABCDEF>` member-ID mentions.
+2. **`reminders.add` is gone.** Slack began retiring the reminders API methods in March 2023. Even with a token and a server, the app could not create the reminder.
+3. **A secret cannot live in this app's state.** The state _is_ a link people forward. A
+   bot token or webhook URL stored in the link, in `localStorage` or in a config file would
+   hand posting rights to everyone who receives the link.
 
-The honest options were therefore: add a backend (and stop being the thing described in §2),
-or make the manual path fast and exact. This is the second.
+The options were to add a backend (and stop being the thing described in §2), or make the
+manual path fast and exact. Slash commands are the second: the person pasting them is
+already signed in to Slack, so nothing here needs a credential.
 
-### 12.1 What `lib/slack.ts` has to get right
+### 12.2 Shape of each command
 
-Slack's `mrkdwn` is not Markdown, and the differences are all load-bearing:
-
-|        | mrkdwn               | Markdown             |
-| ------ | -------------------- | -------------------- |
-| bold   | `*one asterisk*`     | `**two**`            |
-| italic | `_underscores_`      | `*or* _either_`      |
-| link   | `<https://x\|label>` | `[label](https://x)` |
-
-Plus three rules that exist because names arrive from a URL someone else may have crafted —
-the same untrusted-input posture as §3.4:
-
-- **`&`, `<`, `>` are escaped to `&amp;`, `&lt;`, `&gt;`** in every piece of user text. All
-  three or none: escape only the angle brackets and a name containing the literal text
-  `&lt;!channel&gt;` has Slack's parser turn the entities back into brackets, reassembling
-  the broadcast ping the escaping was meant to prevent. The cost is cosmetic and worth
-  knowing: a name with a real `&` in it reads `&amp;` if the text is pasted somewhere that
-  does not interpret mrkdwn entities.
-- **Backtick runs of two or more collapse to one.** Code blocks do not nest, so a ` ``` `
-  inside the table would break out of the block — and a ` ``` ` in the tally line _below_
-  the block would open a new one that swallows the link line, silently costing the message
-  the one thing it exists to carry. Collapsing runs makes a fence unrepresentable however
-  the pieces are concatenated or padded.
-- **Whitespace in a name is flattened to single spaces.** `MAX_NAME` is the only constraint
-  the schema puts on a name, so a crafted link can put a newline in one, and a name spanning
-  two lines can forge its own message line — a second "link" line pointing elsewhere, for
-  instance.
-
-### 12.2 Two message shapes, because of one Slack rule
-
-`@handle` is **not** linkified inside a code block. That forces a choice rather than a
-preference:
-
-- **Mentions off (the default).** The schedule goes in a triple-backtick block, so the date
-  column stays aligned in Slack's monospace rendering. Nobody is notified.
-- **Mentions on.** No code block anywhere in the message; one plain line per slot. The
-  mentions work, the columns no longer line up. The panel says so.
-
-Off by default because posting the message pings real people, and the checkbox label names
-that consequence. A typed `@name` only becomes a mention when it matches that person's Slack
-handle, which the app cannot check (finding 1) — so this is a best-effort nudge and the panel
-says that too. The tally line stays un-mentioned: one ping per person is a nudge, one ping
-per person per occurrence is spam.
-
-The panel is **not** `keepMounted`. Its only state is that checkbox, and re-entering with it
-cleared lands on the safer shape. The second reason is concrete: a kept-mounted panel is
-hidden but still in the DOM, and its textarea holds a copy of every name and date in the
-rotation, which shadows the visible copy for any `getByText` query — six App tests broke on
-exactly that before it was removed.
-
-### 12.3 Recurring posts belong to Slack
-
-The panel explains Workflow Builder — scheduled trigger, then a "send a message to a
-channel" step with the generated message pasted in — and says plainly that Slack does the
-repeating. The workflow holds a _snapshot_: add dates later and the workflow needs a fresh
-paste. Nothing in Shuffler watches a clock.
-
-### 12.4 While we were in there
-
-`toTextTable` was including the rotation link by reading `location.href` directly. That was
-wrong twice over: the module is pure and runs under the node test environment, where there
-is no `location` (it failed two tests at HEAD), and the hash write is debounced ~300 ms
-(§4.1), so `location.href` lags the state the table was built from and could copy a link to
-the _previous_ rotation. The URL is now threaded in from `App`, which owns `shareUrl`, and is
-optional — omitted or empty means no link line.
-
-Bundle cost of the whole tab: **+2.2 kB gzipped** — no new dependencies, just code and
-prose (+2.10 kB JS, +0.08 kB CSS). That moves the measured figures from 126.4 → **128.6 kB**
-on Chrome/Firefox and 146.3 → **148.5 kB** on Safari, against the 150 kB budget of §9.5.
-
-So the §11 warning has come true: there is now about **1.5 kB of Safari headroom**, and the
-next addition of any size cannot come out of it. The two levers named in §11 are still the
-levers — hand-roll the tab strip (Base UI costs 11.2 kB) or drop the Temporal polyfill for
-hand-rolled calendar math (19.9 kB) — and either one buys back more than everything added
-since M4.
-
-### 12.1 Revised: the Slack tab emits `/remind` commands
-
-The tab no longer produces an mrkdwn message to paste as a post. It takes a **channel name**
-and emits one Slack `/remind` command per slot, read-only, with a copy button. Names are
-treated as Slack usernames.
-
-Why this shape:
-
-- Slack's help documents `/remind [#channel] [what] [when]` and states plainly that you
-  **cannot set a reminder for another person**. So each command targets the channel and
-  @-mentions whoever is up, rather than trying to remind them directly.
-- Slash commands need no token, no OAuth and no server: the person pasting them is already
-  authenticated. That is what makes a real reminder feature possible from a static page at
-  all, given the API is unreachable (§12) and `reminders.add` is retired.
+- Slack's help documents `/remind [#channel] [what] [when]` and states that you **cannot
+  set a reminder for another person**. So each command targets the channel and @-mentions
+  whoever is up.
 - Dates use American `m/d/yyyy` and `h:mmam`, the format Slack documents for reliable
-  parsing. `formatWhen` splits the floating wall-clock slot string directly rather than going
-  through `Date`, so no timezone can be introduced.
+  parsing. `formatWhen` splits the floating slot string directly rather than going through
+  `Date`, so no timezone can be introduced (§3.5).
+- **Lead time** (hours before the turn, 0–168) is subtracted with
+  `Temporal.PlainDateTime` via `parseSlot`/`toSlot`, not string maths, because it crosses
+  midnight, month ends and years: 2 hours before `2026-01-01T01:00` is
+  `2025-12-31T23:00`. Tests pin that and the leap-day case.
 
-Two safeguards survive from the previous formatter, for the same reason as before — a name
-arrives from a link someone else may have crafted:
+### 12.3 Safeguards against crafted links
 
-- whitespace in a name is collapsed, or a newline would end the command early and let a name
-  forge an extra `/remind` line;
-- a name that spells `channel`, `here` or `everyone` does **not** get an `@`, or pasting the
-  commands would ping the whole workspace.
+Names and titles arrive from a link someone else may have crafted (the same posture as
+§3.4), so `slack.ts`:
 
-**The mrkdwn escaping question is now moot** — slash commands are not mrkdwn, so nothing is
-HTML-escaped and `Tom & Jerry` reads correctly. The open question recorded earlier (whether
-Slack's composer decodes `&amp;` on paste) no longer affects this app.
+- **collapses whitespace** in names and titles — a newline would end the command early
+  and let a name forge an extra `/remind` line;
+- **does not add `@` to `channel`, `here` or `everyone`** — otherwise pasting the commands
+  would ping the whole workspace;
+- **strips double quotes** (straight and curly) — Slack treats `"` as the delimiter
+  around reminder text, so a quote could end the text early and feed the rest of the line
+  to Slack's time parser.
 
-### 12.2 Lead time
+Slash commands are not mrkdwn, so nothing is HTML-escaped: `Tom & Jerry` reads correctly.
 
-A second input sets how many hours *before* the turn the reminder fires (0 = at the turn,
-capped at one week). Each command therefore carries **two times**: the turn's own time inside
-the reminder text, and the firing time at the end where Slack parses it.
+### 12.4 Panel details
 
-```
-/remind #chores "@ada your turn 9/21/2026 at 9:00am: Dish duty" 9/21/2026 at 7:00am
-```
+The panel is **not** `keepMounted`. Its only state (channel, lead time) is cheap to retype,
+and a kept-mounted panel stays in the DOM while hidden — this one lists every name and
+date, and that hidden copy shadows the visible schedule for `getByText` queries. Six App
+tests broke on exactly that when it was first written with `keepMounted`.
 
-Two things this forced:
+### 12.5 History
 
-- **The reminder text is now quoted.** With a date inside the text, Slack needs a delimiter to
-  know where the text stops and the time expression starts; its docs show quoted reminder text
-  for exactly this. That makes `"` a delimiter, so `stripQuotes` removes it from names and
-  titles — one would otherwise close the text early and feed the remainder to the time parser.
-- **Subtraction goes through `Temporal.PlainDateTime`** (`parseSlot`/`toSlot` from
-  `lib/dates.ts`), not string maths. Lead time crosses midnight, month ends and years: 2 hours
-  before `2026-01-01T01:00` is `2025-12-31T23:00`. Both are pinned by tests, as is the leap-day
-  case (1 hour before `2026-03-01T00:30` is `2026-02-28T23:30`).
+The first version of this tab produced a single mrkdwn message to paste as a post (a
+code-block table, optional `@mentions`, `&`/`<`/`>` escaping, backtick-run collapsing) and
+pointed users at Workflow Builder for repetition. It was replaced by `/remind` commands
+because those give real, per-turn reminders with no extra setup. See git history around
+`01133f7` → `061d113` for that version.
+
+While building it, `toTextTable` was found to read `location.href` directly. That was wrong
+twice: the module is pure and runs under the node test environment, where `location` does
+not exist, and the hash write is debounced ~300 ms (§4.1), so `location.href` could lag
+the state and copy a link to the _previous_ rotation. The URL is now passed in from `App`.
+
+### 12.6 Bundle cost
+
+The tab cost **+2.2 kB gzipped** with no new dependencies, taking the measured bundle to
+about **128.6 kB** on Chrome/Firefox and **148.5 kB** on Safari, against the 150 kB budget
+of §9.5. That leaves roughly **1.5 kB of Safari headroom**. The two levers named in §11
+still apply — hand-roll the tab strip (Base UI costs 11.2 kB) or drop the Temporal
+polyfill for hand-rolled calendar math (19.9 kB) — and either buys back more than
+everything added since M4.

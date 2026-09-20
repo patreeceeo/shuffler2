@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
+import { useCopyFeedback } from './useCopyFeedback'
 
 /** Some chat and mail clients mangle longer links (PLAN §3.6). */
 export const URL_WARN_LENGTH = 1800
@@ -10,35 +11,10 @@ interface Props {
 }
 
 export default function ShareBar({ url, textTable }: Props) {
-  const [copied, setCopied] = useState<'url' | 'text' | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(
-    () => () => {
-      if (timer.current !== null) clearTimeout(timer.current)
-    },
-    [],
-  )
-
-  const copy = (what: 'url' | 'text', text: string) => {
-    const done = () => {
-      setCopied(what)
-      if (timer.current !== null) clearTimeout(timer.current)
-      timer.current = setTimeout(() => {
-        setCopied(null)
-      }, 1800)
-    }
-    // navigator.clipboard is unavailable on http:// origins and in some embeds; fall back
-    // to selecting the field so the user can still hit Ctrl+C.
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).then(done, fallbackSelect)
-    } else {
-      fallbackSelect()
-    }
-  }
-
+  const { copied, copy } = useCopyFeedback<'url' | 'text'>()
   const inputRef = useRef<HTMLInputElement>(null)
-  const fallbackSelect = () => {
+  // Without clipboard access, select the link so Ctrl+C still works.
+  const selectLink = () => {
     inputRef.current?.select()
   }
 
@@ -53,7 +29,7 @@ export default function ShareBar({ url, textTable }: Props) {
       <button
         type="button"
         onClick={() => {
-          copy('url', url)
+          copy('url', url, selectLink)
         }}
         disabled={url.length === 0}
       >
@@ -63,7 +39,7 @@ export default function ShareBar({ url, textTable }: Props) {
         type="button"
         className="secondary"
         onClick={() => {
-          copy('text', textTable)
+          copy('text', textTable, selectLink)
         }}
       >
         {copied === 'text' ? 'Copied' : 'Copy as text'}

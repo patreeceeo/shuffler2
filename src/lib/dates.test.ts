@@ -9,7 +9,7 @@ import {
   monthLabel,
   nextWeekday,
   parseSlot,
-  todayAt,
+  slotFromInputs,
   type Recurrence,
 } from './dates'
 
@@ -218,9 +218,9 @@ describe('defaults for the builder', () => {
     expect(nextWeekday('2026-09-21', 1)).toBe('2026-09-21')
   })
 
-  it('todayAt builds a slot from local fields', () => {
-    expect(todayAt('2026-09-21', '09:00')).toBe('2026-09-21T09:00')
-    expect(todayAt('2026-09-21', '9:5')).toBe('2026-09-21T09:05')
-    expect(todayAt('nope', '09:00')).toBeNull()
+  it('slotFromInputs builds a slot from local fields', () => {
+    expect(slotFromInputs('2026-09-21', '09:00')).toBe('2026-09-21T09:00')
+    expect(slotFromInputs('2026-09-21', '9:5')).toBe('2026-09-21T09:05')
+    expect(slotFromInputs('nope', '09:00')).toBeNull()
   })
 })

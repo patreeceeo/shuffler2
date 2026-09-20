@@ -19,8 +19,9 @@ export default function Help() {
 
       <h3>Browser history is the document history</h3>
       <p>
-        Because the link is the document, every change to the document is recorded by your browser history.
-        Want to undo a mistake? Just use your browser's back button. Want to redo? Forward button.
+        Because the link is the document, every change to the document is recorded by your
+        browser history. Want to undo a mistake? Just use your browser's back button. Want
+        to redo? Forward button.
       </p>
 
       <h3>Names take the dates in order</h3>
@@ -34,7 +35,8 @@ export default function Help() {
       <h3>Shuffling and reordering</h3>
       <p>
         <strong>Shuffle</strong> puts the names in a new random order and the schedule
-        follows. Press it as many times as you like. The order is part of the link, so it's part of the history.
+        follows. Press it as many times as you like. The order is part of the link, so
+        it's part of the history.
       </p>
       <p>
         To arrange the names yourself, drag a row by its handle, or focus the handle and
@@ -59,7 +61,9 @@ export default function Help() {
 
       <h2>Brought to you by</h2>
       <p>
-        <a href="/">Patrick Canfield.</a> <a href="venmo.com/u/Patrick-Canfield-1">Buy me a coffee</a> if this is making your life easier or you want more things like this!
+        <a href="/">Patrick Canfield.</a>{' '}
+        <a href="https://venmo.com/u/Patrick-Canfield-1">Buy me a coffee</a> if this is
+        making your life easier or you want more things like this!
       </p>
     </section>
   )

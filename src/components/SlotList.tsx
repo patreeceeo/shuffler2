@@ -1,5 +1,5 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
-import { formatSlot, slotDate, slotTime, todayAt } from '../lib/dates'
+import { formatSlot, slotDate, slotTime, slotFromInputs } from '../lib/dates'
 import type { Slot } from '../state/schema'
 
 interface Props {
@@ -48,7 +48,7 @@ export default function SlotList({ slots, onSlotsChange }: Props) {
                 value={slotDate(slot)}
                 aria-label={`Date for ${formatSlot(slot)}`}
                 onChange={(event) => {
-                  const next = todayAt(event.target.value, slotTime(slot))
+                  const next = slotFromInputs(event.target.value, slotTime(slot))
                   if (next) replace(index, next)
                 }}
               />
@@ -57,7 +57,7 @@ export default function SlotList({ slots, onSlotsChange }: Props) {
                 value={slotTime(slot)}
                 aria-label={`Time for ${formatSlot(slot)}`}
                 onChange={(event) => {
-                  const next = todayAt(slotDate(slot), event.target.value)
+                  const next = slotFromInputs(slotDate(slot), event.target.value)
                   if (next) replace(index, next)
                 }}
               />

@@ -43,6 +43,13 @@ export function toSlot(value: Temporal.PlainDateTime): Slot {
   return value.toString({ smallestUnit: 'minute' })
 }
 
+/** The Temporal duration for `amount` of `unit`. */
+function durationOf(amount: number, unit: RecurrenceUnit): Temporal.DurationLike {
+  if (unit === 'day') return { days: amount }
+  if (unit === 'week') return { weeks: amount }
+  return { months: amount }
+}
+
 /**
  * Calendar addition. Month overflow uses Temporal's default 'constrain', so Jan 31 + 1
  * month is Feb 28 (or 29) rather than rolling forward into March.
@@ -50,13 +57,7 @@ export function toSlot(value: Temporal.PlainDateTime): Slot {
 export function addUnits(slot: Slot, amount: number, unit: RecurrenceUnit): Slot {
   const parsed = parseSlot(slot)
   if (!parsed) return slot
-  const duration =
-    unit === 'day'
-      ? { days: amount }
-      : unit === 'week'
-        ? { weeks: amount }
-        : { months: amount }
-  return toSlot(parsed.add(duration))
+  return toSlot(parsed.add(durationOf(amount, unit)))
 }
 
 /** The first date on or after `date` (a "YYYY-MM-DD" string) that falls on `weekday`. */
@@ -70,8 +71,11 @@ export function nextWeekday(date: string, weekday: number): string {
   }
 }
 
-/** Builds a slot from a date input value and a time input value. Never throws. */
-export function todayAt(date: string, time: string): Slot | null {
+/**
+ * Builds a slot from an `<input type="date">` value ("YYYY-MM-DD") and an
+ * `<input type="time">` value ("HH:mm"). Never throws; null if either is invalid.
+ */
+export function slotFromInputs(date: string, time: string): Slot | null {
   const timeMatch = /^(\d{1,2}):(\d{1,2})$/.exec(time)
   if (!timeMatch) return null
   const hour = Number(timeMatch[1])
@@ -110,13 +114,7 @@ export function expandRecurrence(recurrence: Recurrence): Slot[] {
   for (let i = 0; i < total; i++) {
     slots.push(toSlot(cursor))
     // Calendar addition, every iteration. This is the DST-correct line.
-    cursor = cursor.add(
-      unit === 'day'
-        ? { days: interval }
-        : unit === 'week'
-          ? { weeks: interval }
-          : { months: interval },
-    )
+    cursor = cursor.add(durationOf(interval, unit))
   }
   return slots
 }

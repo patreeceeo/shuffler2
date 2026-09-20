@@ -16,6 +16,8 @@ import { parseSlot, toSlot } from './dates'
  * Dates use American m/d/yyyy and `h:mmam`, the format Slack documents for best parsing.
  * The slot is a floating local wall-clock string, so this splits it rather than going
  * through Date — no timezone can be introduced and no `toISOString()` can creep in.
+ *
+ * Background and the rejected alternatives: PLAN §12.
  */
 
 /** A week of lead time is already absurd for a chore rota; past that it is a typo. */
@@ -38,10 +40,9 @@ export function shiftEarlier(slot: string, hours: number): string {
 }
 
 /**
- * The reminder text is wrapped in double quotes so Slack knows where it ends and the time
- * expression begins — necessary because the text now contains a date of its own. That makes
- * a literal `"` a delimiter, so it cannot survive inside a name or title: one would close
- * the text early and hand the rest to Slack's time parser.
+ * Removes straight and curly double quotes from user text. Slack's `/remind` parser treats
+ * `"` as the delimiter around reminder text, so a quote inside a name or title could end
+ * the text early and hand the rest of the line to Slack's time parser.
  */
 function stripQuotes(text: string): string {
   return text.replace(/["\u201c\u201d]/g, '')
@@ -65,7 +66,7 @@ export function toHandle(name: string): string {
   return `@${flat}`
 }
 
-/** `#general` from whatever the user typed: no leading #, no spaces, no empty string. */
+/** "#my channel" -> "my-channel": strips leading #s and turns spaces into hyphens. */
 export function normalizeChannel(raw: string): string {
   return raw.trim().replace(/^#+/, '').replace(/\s+/g, '-')
 }
@@ -74,7 +75,14 @@ export function normalizeChannel(raw: string): string {
 export function formatWhen(slot: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(slot)
   if (!match) return slot
-  const [, y, mo, d, h, mi] = match as unknown as [string, string, string, string, string, string]
+  const [, y, mo, d, h, mi] = match as unknown as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ]
   const hour24 = Number(h)
   const suffix = hour24 < 12 ? 'am' : 'pm'
   const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
@@ -87,15 +95,20 @@ export interface RemindOptions {
   /** Rotation title, used as the thing being reminded about. */
   title: string
   /**
-   * How many hours before the turn the reminder should fire. 0 means at the turn itself.
-   * The wording changes with it, so a reminder that arrives early says so.
+   * How many hours before the turn the reminder should fire. 0 (the default) means at the
+   * turn itself. The turn's own time is always stated in the reminder text, so a reminder
+   * that fires early still says when the turn is.
    */
   hoursBefore?: number
 }
 
 /**
- * One `/remind` per slot. Returns lines, not a blob, so the caller can join them and the
- * tests can assert per-command.
+ * One `/remind` per slot, e.g.
+ *
+ *   /remind #chores @ada your Dish duty turn on 9/21/2026 at 9:00am! 9/21/2026 at 7:00am
+ *
+ * The text states when the turn is; the trailing time is when Slack fires the reminder.
+ * Returns [] when the schedule is empty or no channel is given.
  */
 export function toRemindCommands(schedule: Schedule, options: RemindOptions): string[] {
   if (schedule.empty) return []
@@ -104,11 +117,13 @@ export function toRemindCommands(schedule: Schedule, options: RemindOptions): st
   const what = stripQuotes(options.title).replace(/\s+/g, ' ').trim()
   const hours = options.hoursBefore ?? 0
   return schedule.assignments.map((assignment) => {
-    const handles = assignment.names.map(toHandle).filter((h) => h.length > 0).join(' ')
-    // The turn's own time leads the text, so a reminder that arrives early still says
-    // plainly when the turn actually is. The trailing time is when Slack fires it.
+    const handles = assignment.names
+      .map(toHandle)
+      .filter((h) => h.length > 0)
+      .join(' ')
     const when = formatWhen(assignment.slot)
-    const subject = what.length > 0 ? `your ${what} turn on ${when}!` : `your turn on ${when}`
+    const subject =
+      what.length > 0 ? `your ${what} turn on ${when}!` : `your turn on ${when}`
     const fires = formatWhen(shiftEarlier(assignment.slot, hours))
     return `/remind #${channel} ${handles} ${subject} ${fires}`
   })

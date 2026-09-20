@@ -94,7 +94,6 @@ describe('toRemindCommands', () => {
   })
 })
 
-
 describe('shiftEarlier', () => {
   it('moves the reminder back within the same day', () => {
     expect(shiftEarlier('2026-09-21T09:00', 2)).toBe('2026-09-21T07:00')
@@ -150,7 +149,11 @@ describe('toRemindCommands with lead time', () => {
 
 describe('quotes in user text', () => {
   it('are stripped from names and titles', () => {
-    const s = state({ names: ['ada"'], title: 'Dish " duty', slots: ['2026-09-21T09:00'] })
+    const s = state({
+      names: ['ada"'],
+      title: 'Dish " duty',
+      slots: ['2026-09-21T09:00'],
+    })
     const line = toRemindCommands(derive(s), {
       channel: 'chores',
       title: s.title,

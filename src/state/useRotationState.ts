@@ -21,7 +21,10 @@ export type WriteMode = 'replace' | 'push'
 
 export interface RotationStore {
   state: RotationState
-  /** null until the async decode finishes; the UI renders a quiet skeleton meanwhile. */
+  /**
+   * False until the initial (async) decode of the incoming link finishes. Until then
+   * `state` is EMPTY_STATE and `shareUrl` is ''.
+   */
   ready: boolean
   /** True when the incoming link could not be decoded. Dismissible (§3.4). */
   corrupted: boolean
@@ -42,6 +45,21 @@ function currentUrlWithBlob(blob: string): string {
   const { origin, pathname } = window.location
   const base = `${origin}${pathname}`
   return blob.length > 0 ? `${base}#s=${blob}` : base
+}
+
+/**
+ * Writes `url` to the address bar without navigating. Returns false if the browser
+ * refused: some sandboxed contexts (srcdoc iframes, file:// in a few browsers) reject
+ * history writes. The app keeps working either way; only the address bar goes stale.
+ */
+function writeHistory(url: string, mode: WriteMode): boolean {
+  try {
+    if (mode === 'push') window.history.pushState(null, '', url)
+    else window.history.replaceState(null, '', url)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function useRotationState(): RotationStore {
@@ -80,12 +98,7 @@ export function useRotationState(): RotationStore {
       lastWritten.current = null
       const bare = currentUrlWithBlob('')
       setShareUrl(bare)
-      const clear = job.mode === 'push' ? 'pushState' : 'replaceState'
-      try {
-        window.history[clear](null, '', bare)
-      } catch {
-        /* address bar stays stale; the app still works */
-      }
+      writeHistory(bare, job.mode)
       return
     }
 
@@ -94,14 +107,9 @@ export function useRotationState(): RotationStore {
       lastWritten.current = blob
       const url = currentUrlWithBlob(blob)
       setShareUrl(url)
-      const method = job.mode === 'push' ? 'pushState' : 'replaceState'
-      try {
-        window.history[method](null, '', url)
-      } catch {
-        // Some sandboxed contexts (srcdoc iframes, file:// in a few browsers) refuse
-        // history writes. The app keeps working; only the address bar goes stale.
-        window.location.hash = `s=${blob}`
-      }
+      // Last resort when history writes are refused. The resulting hashchange is
+      // ignored by the echo guard, since lastWritten already holds this blob.
+      if (!writeHistory(url, job.mode)) window.location.hash = `s=${blob}`
     })
   }, [])
 
@@ -162,15 +170,7 @@ export function useRotationState(): RotationStore {
         const encoded = await encode(legacy)
         if (cancelled) return
         adopt(legacy, encoded)
-        try {
-          window.history.replaceState(
-            null,
-            '',
-            `${window.location.origin}${window.location.pathname}#s=${encoded}`,
-          )
-        } catch {
-          /* address bar stays stale; the app still works */
-        }
+        writeHistory(currentUrlWithBlob(encoded), 'replace')
         setReady(true)
         return
       }
@@ -213,7 +213,7 @@ export function useRotationState(): RotationStore {
     }
   }, [adopt])
 
-  // Flush a pending write if the component unmounts mid-debounce.
+  // Cancel a pending debounced write if the component unmounts mid-debounce.
   useEffect(
     () => () => {
       if (timer.current !== null) clearTimeout(timer.current)

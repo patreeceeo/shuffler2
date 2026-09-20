@@ -5,7 +5,6 @@
 }
 
 .app {
-  /* The 6rem tail was clearance for the old sticky share footer; it is in a tab now. */
   padding-block: 1.5rem 3rem;
 }
 
@@ -35,9 +34,9 @@
 /* Panels --------------------------------------------------------------- */
 
 /*
-  Layout order is toolbar -> schedule -> builder tabs -> share bar. The schedule is the
-  answer, so it sits where the eye lands after Shuffle; the two builders that feed it
-  share one tab strip below, so only one is on screen at a time.
+  Layout order is toolbar -> schedule -> tabs (Names, Dates, Share, Slack, Help). The
+  schedule is the answer, so it sits where the eye lands after Shuffle; everything that
+  feeds or exports it shares one tab strip below.
 */
 
 section > h2 {
@@ -122,7 +121,6 @@ section > h2 {
 
 /* Share bar ------------------------------------------------------------ */
 
-/* Lives inside the Share tab now, so it is neither sticky nor a page footer. */
 .share-bar {
   display: flex;
   flex-wrap: wrap;
@@ -411,8 +409,8 @@ table.schedule td {
   padding-top: calc(var(--shuffler-gap) * 1.25);
 }
 
-/* A hidden panel is kept mounted so a half-filled recurrence form survives a tab
-   switch; it must still be out of the layout and out of the a11y tree. */
+/* Names and Dates panels stay mounted while hidden (so a half-filled recurrence form
+   survives a tab switch); they must still be out of the layout and the a11y tree. */
 .builder-panel[hidden] {
   display: none;
 }
@@ -438,16 +436,12 @@ table.schedule td {
   color: var(--pico-muted-color);
 }
 
-.help code {
-  font-size: 0.9em;
-}
-
 /* Mascot ---------------------------------------------------------------- */
 
 .toolbar .mascot {
   flex: 0 0 auto;
   height: 3rem;
-  width: auto; /* intrinsic GIF is 220x124 */
+  width: auto; /* keep the GIF's 16:9 aspect ratio */
   border-radius: var(--pico-border-radius);
   object-fit: cover;
 }
@@ -468,33 +462,23 @@ table.schedule td {
   color: var(--pico-del-color, #b3261e);
 }
 
-/* --- Slack tab ------------------------------------------------------------- */
-
-.slack-panel h3 {
-  margin: 1.5rem 0 0.5rem;
-  font-size: 1rem;
-}
+/* Slack tab ------------------------------------------------------------- */
 
 .slack-panel p,
 .slack-panel ol {
   margin-bottom: 0.75rem;
 }
 
-.slack-channel {
+.slack-field {
   display: block;
   max-width: 22rem;
   margin-bottom: 0.75rem;
 }
 
-.slack-channel input {
+.slack-field input {
   margin-top: 0.25rem;
   margin-bottom: 0;
   font-family: var(--pico-font-family-monospace);
-}
-
-.slack-panel > button {
-  width: auto;
-  margin: 0;
 }
 
 .slack-commands {
@@ -512,8 +496,8 @@ table.schedule td {
   gap: 0.4rem;
 }
 
-/* The command is long and its tail (the firing time) is the part worth reading, so let the
-   field scroll rather than wrap, and keep it monospace so the quoting is legible. */
+/* A command is long and its tail (the firing time) is the part worth reading, so the
+   field scrolls rather than wraps. */
 .slack-command input {
   flex: 1 1 auto;
   min-width: 0;

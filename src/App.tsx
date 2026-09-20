@@ -165,17 +165,10 @@ export default function App() {
         </Tabs.Panel>
 
         {/*
-          NOT keepMounted, for the same reason as Share and one of its own.
-
-          Its only state is the @-mention checkbox, and re-entering with it cleared lands on
-          the safer of the two shapes — an unticked box pings nobody, so the state that gets
-          lost is the one worth losing.
-
-          The other reason is concrete: a kept-mounted panel is hidden but still in the DOM,
-          and this one's textarea contains a copy of every name, date and guidance line in
-          the rotation. That duplicate shadows the visible copy — `getByText` does not skip
-          hidden nodes, and six existing App tests broke on exactly that when this panel was
-          first written with keepMounted.
+          Not keepMounted, for two reasons. Its only state (channel, lead time) is cheap to
+          retype. And a kept-mounted panel stays in the DOM while hidden: this one lists
+          every name and date, which would duplicate the schedule's text and break
+          `getByText` queries in the App tests (PLAN §12).
         */}
         <Tabs.Panel value="slack" className="builder-panel">
           <SlackPanel schedule={schedule} title={state.title} />

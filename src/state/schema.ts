@@ -66,7 +66,7 @@ export function daysInMonth(year: number, month: number): number {
   return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31
 }
 
-export function isLeapYear(year: number): boolean {
+function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
 }
 
@@ -77,7 +77,9 @@ export function isLeapYear(year: number): boolean {
  */
 export function isEmptyRotation(state: RotationState): boolean {
   return (
-    state.names.length === 0 && state.slots.length === 0 && state.title.trim().length === 0
+    state.names.length === 0 &&
+    state.slots.length === 0 &&
+    state.title.trim().length === 0
   )
 }
 
@@ -95,14 +97,11 @@ export function validate(value: unknown): RotationState | null {
   return result.success ? result.output : null
 }
 
-/** Slots are kept sorted ascending; lexicographic order == chronological for this format. */
-export function sortSlots(slots: readonly Slot[]): Slot[] {
-  return [...slots].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-}
-
-/** Sorted, de-duplicated, capped. Used by every path that writes slots. */
+/**
+ * Sorted ascending, de-duplicated, capped at MAX_SLOTS. Every path that writes slots goes
+ * through this, which is what makes `decode(encode(s))` an identity (PLAN §11).
+ * Lexicographic order is chronological order for the fixed-width slot format.
+ */
 export function normalizeSlots(slots: readonly Slot[]): Slot[] {
-  return [...new Set(slots)]
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-    .slice(0, MAX_SLOTS)
+  return [...new Set(slots)].sort().slice(0, MAX_SLOTS)
 }

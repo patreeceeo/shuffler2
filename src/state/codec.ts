@@ -78,6 +78,11 @@ function civilFromDays(z: number): { year: number; month: number; day: number } 
   return { year: m <= 2 ? y + 1 : y, month: m, day: d }
 }
 
+// 0001-01-01T00:00 .. 9999-12-31T23:59, the range the "YYYY-..." slot format can express.
+const MIN_MINUTES = slotToMinutes('0001-01-01T00:00')
+const MAX_MINUTES = slotToMinutes('9999-12-31T23:59')
+
+/** State -> wire tuple. Slots are normalized first, so the encoding is canonical. */
 export function toTuple(state: RotationState): Tuple {
   const slots = normalizeSlots(state.slots)
   const first = slots[0]
@@ -123,15 +128,12 @@ export function fromTuple(tuple: unknown): RotationState | null {
   return validate({ v: WIRE_VERSION, title, names, slots, groupSize })
 }
 
-// 0001-01-01T00:00 .. 9999-12-31T23:59, the range the "YYYY-..." slot format can express.
-const MIN_MINUTES = slotToMinutes('0001-01-01T00:00')
-const MAX_MINUTES = slotToMinutes('9999-12-31T23:59')
-
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
 type Bytes = Uint8Array<ArrayBuffer>
 
+/** Pushes `bytes` through a (de)compression stream and collects the output. */
 async function pipeThrough(
   bytes: Bytes,
   stream: CompressionStream | DecompressionStream,
@@ -152,9 +154,8 @@ async function pipeThrough(
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
-      const chunk = value
-      chunks.push(chunk)
-      total += chunk.byteLength
+      chunks.push(value)
+      total += value.byteLength
     }
   } finally {
     await written

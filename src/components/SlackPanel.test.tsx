@@ -66,6 +66,8 @@ describe('SlackPanel', () => {
         'Copied',
       )
     })
-    expect(screen.getByRole('button', { name: 'Copy command 1' })).toHaveTextContent('Copy')
+    expect(screen.getByRole('button', { name: 'Copy command 1' })).toHaveTextContent(
+      'Copy',
+    )
   })
 })

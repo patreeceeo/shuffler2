@@ -27,7 +27,10 @@ interface Props {
   onGroupSizeChange: (groupSize: number) => void
 }
 
-/** Stable-enough row keys: names may repeat, so key by position plus value. */
+/**
+ * Row ids are positional. Names may repeat, so the value cannot be the key; dnd-kit only
+ * needs the ids to be unique within one render, which positions are.
+ */
 function rowId(index: number): string {
   return `name-${String(index)}`
 }
