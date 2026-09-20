@@ -60,10 +60,11 @@ src/
     shuffle.ts              unbiased Fisher-Yates over crypto.getRandomValues
     names.ts                multi-line paste splitting, insert, move
     slack.ts                builds Slack `/remind` commands
+    gcal.ts                 builds "add to Google Calendar" links for the +gcal column
 
   components/               one file per panel
     Toolbar.tsx             title, Shuffle, Reset
-    ScheduleTable.tsx       the result: dates, who, per-person tally
+    ScheduleTable.tsx       the result: dates, who, +gcal link, per-person tally
     NameList.tsx            Names tab: edit, paste, drag-reorder, people per slot
     RecurrenceBuilder.tsx   Dates tab: "every N weeks on Monday at 09:00…" + single dates
     SlotList.tsx            Dates tab: edit/delete individual dates

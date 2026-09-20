@@ -1,14 +1,25 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { formatSlot, monthKey, monthLabel } from '../lib/dates'
+import { gcalLink } from '../lib/gcal'
 import type { Schedule } from '../lib/schedule'
 
 interface Props {
   schedule: Schedule
   hasNames: boolean
   hasSlots: boolean
+  /** Rotation title, used in each calendar event's name. */
+  title: string
+  /** The rotation link, put in each calendar event's description. '' for none. */
+  shareUrl: string
 }
 
-export default function ScheduleTable({ schedule, hasNames, hasSlots }: Props) {
+export default function ScheduleTable({
+  schedule,
+  hasNames,
+  hasSlots,
+  title,
+  shareUrl,
+}: Props) {
   // One ref, no animation code, and it honours prefers-reduced-motion by default (§4.2).
   const [bodyRef] = useAutoAnimate<HTMLTableSectionElement>()
 
@@ -44,6 +55,9 @@ export default function ScheduleTable({ schedule, hasNames, hasSlots }: Props) {
             <tr>
               <th scope="col">When</th>
               <th scope="col">Who</th>
+              <th scope="col">
+                <span className="visually-hidden">Calendar</span>
+              </th>
             </tr>
           </thead>
           <tbody ref={bodyRef}>
@@ -59,6 +73,16 @@ export default function ScheduleTable({ schedule, hasNames, hasSlots }: Props) {
                   {/* Plain text, always. Names arrive from a link a stranger may have
                       sent; dangerouslySetInnerHTML here is the v1 stored-XSS bug. */}
                   <td>{assignment.names.join(', ')}</td>
+                  <td className="gcal-cell">
+                    <GcalLink
+                      href={gcalLink({
+                        slot: assignment.slot,
+                        names: assignment.names,
+                        title,
+                        url: shareUrl,
+                      })}
+                    />
+                  </td>
                 </tr>
               )
             })}
@@ -79,5 +103,21 @@ export default function ScheduleTable({ schedule, hasNames, hasSlots }: Props) {
         )}
       </p>
     </section>
+  )
+}
+
+/** "+gcal": opens a pre-filled Google Calendar event in a new tab. */
+function GcalLink({ href }: { href: string | null }) {
+  if (href === null) return null
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="add to Google Calendar"
+      title="add to Google Calendar"
+    >
+      +gcal
+    </a>
   )
 }

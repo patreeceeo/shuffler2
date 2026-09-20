@@ -296,6 +296,14 @@ table.schedule td {
   vertical-align: top;
 }
 
+/* The +gcal link column: only as wide as its content, right-aligned. */
+table.schedule .gcal-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 0.8rem;
+}
+
 .month-head {
   display: block;
   margin-top: 0.4rem;

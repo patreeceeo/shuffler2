@@ -71,6 +71,8 @@ export default function App() {
         schedule={schedule}
         hasNames={state.names.length > 0}
         hasSlots={state.slots.length > 0}
+        title={state.title}
+        shareUrl={liveUrl}
       />
 
       <Tabs.Root defaultValue="names" className="builder-tabs">

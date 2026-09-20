@@ -52,6 +52,13 @@ export default function Help() {
         chronological order.
       </p>
 
+      <h3>Adding turns to your calendar</h3>
+      <p>
+        Each row of the schedule has a <strong>+gcal</strong> link. It opens Google
+        Calendar with that turn filled in as a one-hour event; nothing is saved until you
+        save it there.
+      </p>
+
       <h3>If the link gets long</h3>
       <p>
         A big rotation makes a long link, and past about {URL_WARN_LENGTH} characters some

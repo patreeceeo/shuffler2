@@ -297,6 +297,11 @@ describe('App end to end (jsdom)', () => {
     const rows = scheduleRows()
     expect(rows[0]).toContain('Ada, Grace')
     expect(rows[1]).toContain('Linus, Barbara')
+    const gcal = screen.getAllByRole('link', { name: 'add to Google Calendar' })
+    expect(gcal).toHaveLength(rows.length)
+    expect(gcal[0]).toHaveTextContent('+gcal')
+    const text = new URL(gcal[0]!.getAttribute('href')!).searchParams.get('text')
+    expect(text).toContain('Ada, Grace')
   })
 
   it('Reset clears the hash instead of leaving an empty blob behind', async () => {
