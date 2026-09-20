@@ -72,6 +72,7 @@ src/
     SlackPanel.tsx          Slack tab: `/remind` commands to paste
     Help.tsx                Help tab: user-facing explanation
     useCopyFeedback.ts      clipboard copy + "Copied" flash, shared by Share and Slack
+    NumberField.tsx         whole-number input that stays typeable (clamps on blur)
 
   test/                     vitest setup (Temporal polyfill, jest-dom matchers)
 e2e/smoke.spec.ts           playwright end-to-end smoke test

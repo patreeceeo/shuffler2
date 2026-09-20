@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import type { Schedule } from '../lib/schedule'
 import { MAX_HOURS_BEFORE, toRemindCommands } from '../lib/slack'
 import { useCopyFeedback } from './useCopyFeedback'
+import NumberField from './NumberField'
 
 interface Props {
   schedule: Schedule
@@ -25,20 +26,15 @@ interface Props {
  */
 export default function SlackPanel({ schedule, title }: Props) {
   const [channel, setChannel] = useState('')
-  // Kept as a string, not a number: an <input type="number"> can legitimately be empty
-  // mid-typing, and coercing that to 0 fights the user's cursor.
-  const [hoursBefore, setHoursBefore] = useState('0')
+  /** Hours before the turn to remind; NumberField holds any half-typed text. */
+  const [hoursBefore, setHoursBefore] = useState(0)
   /** Keyed by row index, so only the row whose button fired says "Copied". */
   const { copied: copiedIndex, copy } = useCopyFeedback<number>()
   const channelId = useId()
   const hoursId = useId()
   const inputs = useRef(new Map<number, HTMLInputElement>())
 
-  const hours = Math.min(
-    Math.max(Math.floor(Number(hoursBefore) || 0), 0),
-    MAX_HOURS_BEFORE,
-  )
-  const commands = toRemindCommands(schedule, { channel, title, hoursBefore: hours })
+  const commands = toRemindCommands(schedule, { channel, title, hoursBefore })
 
   return (
     <section className="slack-panel" aria-labelledby="slack-heading">
@@ -60,16 +56,12 @@ export default function SlackPanel({ schedule, title }: Props) {
 
       <label htmlFor={hoursId} className="slack-field">
         Hours before the turn to remind
-        <input
+        <NumberField
           id={hoursId}
-          type="number"
+          value={hoursBefore}
           min={0}
           max={MAX_HOURS_BEFORE}
-          step={1}
-          value={hoursBefore}
-          onChange={(event) => {
-            setHoursBefore(event.target.value)
-          }}
+          onChange={setHoursBefore}
         />
       </label>
 

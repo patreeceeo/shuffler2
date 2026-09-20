@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useId, useRef, type KeyboardEvent, type ClipboardEvent } from 'react'
 import { MAX_GROUP_SIZE, MAX_NAMES } from '../state/schema'
 import { insertNames, moveItem, splitPastedNames } from '../lib/names'
+import NumberField from './NumberField'
 
 interface Props {
   names: string[]
@@ -175,17 +176,12 @@ export default function NameList({
 
       <label htmlFor={groupId} className="group-size">
         People per slot
-        <input
+        <NumberField
           id={groupId}
-          type="number"
+          value={groupSize}
           min={1}
           max={MAX_GROUP_SIZE}
-          value={groupSize}
-          onChange={(event) => {
-            const parsed = Number(event.target.value)
-            if (!Number.isFinite(parsed)) return
-            onGroupSizeChange(Math.min(MAX_GROUP_SIZE, Math.max(1, Math.round(parsed))))
-          }}
+          onChange={onGroupSizeChange}
         />
       </label>
     </section>

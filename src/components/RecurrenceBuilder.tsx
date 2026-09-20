@@ -6,6 +6,7 @@ import {
   type RecurrenceUnit,
 } from '../lib/dates'
 import { MAX_SLOTS, type Slot } from '../state/schema'
+import NumberField from './NumberField'
 
 const WEEKDAYS: { value: number; label: string }[] = [
   { value: 1, label: 'Monday' },
@@ -78,15 +79,12 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
         <label htmlFor={ids.interval} className="visually-hidden">
           Interval
         </label>
-        <input
+        <NumberField
           id={ids.interval}
-          type="number"
+          value={every}
           min={1}
           max={MAX_INTERVAL}
-          value={every}
-          onChange={(event) => {
-            setEvery(clamp(event.target.value, 1, MAX_INTERVAL, 1))
-          }}
+          onChange={setEvery}
         />
         <label htmlFor={ids.unit} className="visually-hidden">
           Unit
@@ -155,15 +153,12 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
         <label htmlFor={ids.count} className="visually-hidden">
           Number of occurrences
         </label>
-        <input
+        <NumberField
           id={ids.count}
-          type="number"
+          value={count}
           min={1}
           max={MAX_SLOTS}
-          value={count}
-          onChange={(event) => {
-            setCount(clamp(event.target.value, 1, MAX_SLOTS, 12))
-          }}
+          onChange={setCount}
         />
         <span>times</span>
       </div>
@@ -221,11 +216,4 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
       </div>
     </section>
   )
-}
-
-/** Parses a number input's value, rounds it and clamps it to [min, max]. */
-function clamp(raw: string, min: number, max: number, fallback: number): number {
-  const parsed = Number(raw)
-  if (!Number.isFinite(parsed)) return fallback
-  return Math.min(max, Math.max(min, Math.round(parsed)))
 }
