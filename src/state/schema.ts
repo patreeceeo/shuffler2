@@ -4,6 +4,10 @@ import * as v from 'valibot'
  * A slot is a *floating* local wall-clock date-time: "YYYY-MM-DDTHH:mm", no zone, no UTC
  * conversion (PLAN §3.5). "Every Monday at 9am" reads as 9am to everyone who opens the
  * link. Right for a household chore chart, wrong for a cross-timezone on-call roster.
+ *
+ * A slot may also be a bare date, "YYYY-MM-DD": the turn is that day, and the user chose
+ * not to be specific about the time. It is not midnight. Lexicographic order still sorts
+ * it correctly, just before any timed slot on the same day.
  */
 export type Slot = string
 
@@ -24,12 +28,17 @@ export const MAX_TITLE = 200
 export const MAX_NAME = 100
 export const MAX_GROUP_SIZE = 20
 
-/** "YYYY-MM-DDTHH:mm" — exactly minute precision, nothing else. */
-export const SLOT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+/** "YYYY-MM-DDTHH:mm" (exactly minute precision) or a bare "YYYY-MM-DD", nothing else. */
+export const SLOT_RE = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?$/
+
+/** True for "YYYY-MM-DDTHH:mm", false for a date-only "YYYY-MM-DD" slot. */
+export function slotHasTime(slot: Slot): boolean {
+  return slot.length > 10
+}
 
 const SlotSchema = v.pipe(
   v.string(),
-  v.regex(SLOT_RE, 'slot must be YYYY-MM-DDTHH:mm'),
+  v.regex(SLOT_RE, 'slot must be YYYY-MM-DD or YYYY-MM-DDTHH:mm'),
   v.check(isRealCalendarSlot, 'slot must be a real calendar date-time'),
 )
 
@@ -53,6 +62,7 @@ function isRealCalendarSlot(s: string): boolean {
   const year = Number(s.slice(0, 4))
   const month = Number(s.slice(5, 7))
   const day = Number(s.slice(8, 10))
+  // A date-only slot has no time part; Number('') is 0, which passes the checks below.
   const hour = Number(s.slice(11, 13))
   const minute = Number(s.slice(14, 16))
   if (month < 1 || month > 12) return false

@@ -1,4 +1,4 @@
-import { MAX_SLOTS, SLOT_RE, type Slot } from '../state/schema'
+import { MAX_SLOTS, SLOT_RE, slotHasTime, type Slot } from '../state/schema'
 
 /**
  * Calendar arithmetic, recurrence expansion, formatting.
@@ -14,7 +14,9 @@ import { MAX_SLOTS, SLOT_RE, type Slot } from '../state/schema'
  *    renders as the previous day. That is the exact bug v1 shipped (§1). Every formatter
  *    here reads local calendar fields. ESLint blocks the method outright.
  *
- * Slots are floating local wall-clock: "YYYY-MM-DDTHH:mm", no zone (§3.5).
+ * Slots are floating local wall-clock: "YYYY-MM-DDTHH:mm", no zone (§3.5), or a bare
+ * "YYYY-MM-DD" when the user has chosen not to give a time. Arithmetic preserves which of
+ * the two a slot is, and formatting never shows a time a date-only slot does not have.
  */
 
 export type RecurrenceUnit = 'day' | 'week' | 'month'
@@ -29,7 +31,13 @@ export interface Recurrence {
   count: number
 }
 
-/** Never throws. Returns null for anything that is not a real calendar slot. */
+/**
+ * Never throws. Returns null for anything that is not a real calendar slot.
+ *
+ * A date-only slot parses to midnight so that calendar arithmetic works on it, but that
+ * midnight is not a real time: check `slotHasTime` before displaying or exporting one, and
+ * pass `timed: false` to `toSlot` to turn the result back into a date-only slot.
+ */
 export function parseSlot(slot: string): Temporal.PlainDateTime | null {
   if (!SLOT_RE.test(slot)) return null
   try {
@@ -39,8 +47,8 @@ export function parseSlot(slot: string): Temporal.PlainDateTime | null {
   }
 }
 
-export function toSlot(value: Temporal.PlainDateTime): Slot {
-  return value.toString({ smallestUnit: 'minute' })
+export function toSlot(value: Temporal.PlainDateTime, timed = true): Slot {
+  return timed ? value.toString({ smallestUnit: 'minute' }) : value.toPlainDate().toString()
 }
 
 /** The Temporal duration for `amount` of `unit`. */
@@ -57,7 +65,7 @@ function durationOf(amount: number, unit: RecurrenceUnit): Temporal.DurationLike
 export function addUnits(slot: Slot, amount: number, unit: RecurrenceUnit): Slot {
   const parsed = parseSlot(slot)
   if (!parsed) return slot
-  return toSlot(parsed.add(durationOf(amount, unit)))
+  return toSlot(parsed.add(durationOf(amount, unit)), slotHasTime(slot))
 }
 
 /** The first date on or after `date` (a "YYYY-MM-DD" string) that falls on `weekday`. */
@@ -73,9 +81,17 @@ export function nextWeekday(date: string, weekday: number): string {
 
 /**
  * Builds a slot from an `<input type="date">` value ("YYYY-MM-DD") and an
- * `<input type="time">` value ("HH:mm"). Never throws; null if either is invalid.
+ * `<input type="time">` value ("HH:mm"), or a date-only slot when `time` is null.
+ * Never throws; null if either is invalid.
  */
-export function slotFromInputs(date: string, time: string): Slot | null {
+export function slotFromInputs(date: string, time: string | null): Slot | null {
+  if (time === null) {
+    try {
+      return Temporal.PlainDate.from(date, { overflow: 'reject' }).toString()
+    } catch {
+      return null
+    }
+  }
   const timeMatch = /^(\d{1,2}):(\d{1,2})$/.exec(time)
   if (!timeMatch) return null
   const hour = Number(timeMatch[1])
@@ -109,10 +125,11 @@ export function expandRecurrence(recurrence: Recurrence): Slot[] {
     cursor = cursor.add({ days: delta })
   }
 
+  const timed = slotHasTime(start)
   const total = Math.min(count, MAX_SLOTS)
   const slots: Slot[] = []
   for (let i = 0; i < total; i++) {
-    slots.push(toSlot(cursor))
+    slots.push(toSlot(cursor, timed))
     // Calendar addition, every iteration. This is the DST-correct line.
     cursor = cursor.add(durationOf(interval, unit))
   }
@@ -151,9 +168,11 @@ export function formatSlotDate(slot: Slot): string {
   return parsed.toPlainDate().toLocaleString(undefined, DATE_WITH_YEAR_OPTS)
 }
 
+/** '' for a date-only slot: it has no time to show. */
 export function formatSlotTime(slot: Slot): string {
   const parsed = parseSlot(slot)
   if (!parsed) return slot
+  if (!slotHasTime(slot)) return ''
   return parsed.toPlainTime().toLocaleString(undefined, TIME_OPTS)
 }
 
@@ -161,7 +180,7 @@ export function formatSlot(slot: Slot): string {
   const parsed = parseSlot(slot)
   if (!parsed) return slot
   const date = parsed.toPlainDate().toLocaleString(undefined, DATE_OPTS)
-  return `${date}, ${formatSlotTime(slot)}`
+  return slotHasTime(slot) ? `${date}, ${formatSlotTime(slot)}` : date
 }
 
 /** The date part of a slot, for a <input type="date"> value. */
@@ -169,7 +188,7 @@ export function slotDate(slot: Slot): string {
   return slot.slice(0, 10)
 }
 
-/** The time part of a slot, for a <input type="time"> value. */
-export function slotTime(slot: Slot): string {
-  return slot.slice(11, 16)
+/** The time part of a slot, for a <input type="time"> value; null for a date-only slot. */
+export function slotTime(slot: Slot): string | null {
+  return slotHasTime(slot) ? slot.slice(11, 16) : null
 }

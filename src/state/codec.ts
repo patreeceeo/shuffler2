@@ -1,11 +1,20 @@
-import { MAX_SLOTS, normalizeSlots, validate, type RotationState } from './schema'
+import {
+  MAX_SLOTS,
+  normalizeSlots,
+  slotHasTime,
+  validate,
+  type RotationState,
+} from './schema'
 
 /**
  * Wire format (PLAN §3.2). Positional tuple — keys cost bytes:
  *
- *   tuple  = [2, title, names, groupSize, anchor, deltas]
+ *   tuple  = [2, title, names, groupSize, anchor, deltas, untimed?]
  *   anchor = minutes since 1970-01-01T00:00 of slots[0], read as naive local time
  *   deltas = [slots[1]-slots[0], slots[2]-slots[1], ...] in minutes
+ *   untimed = optional string of '0'/'1', one per slot; '1' marks a date-only slot (which
+ *             is encoded as that day's midnight). Omitted when every slot has a time, so
+ *             links without date-only slots are byte-for-byte what they always were.
  *
  * JSON.stringify -> deflate-raw -> base64url.
  *
@@ -17,7 +26,11 @@ import { MAX_SLOTS, normalizeSlots, validate, type RotationState } from './schem
  */
 export const WIRE_VERSION = 2
 
-type Tuple = [number, string, string[], number, number | null, number[]]
+type Tuple =
+  | [number, string, string[], number, number | null, number[]]
+  | [number, string, string[], number, number | null, number[], string]
+
+const UNTIMED_RE = /^[01]*$/
 
 const MINUTES_PER_DAY = 1440
 
@@ -97,17 +110,25 @@ export function toTuple(state: RotationState): Tuple {
     deltas.push(cur - prev)
     prev = cur
   }
-  return [WIRE_VERSION, state.title, state.names, state.groupSize, anchor, deltas]
+  const { title, names, groupSize } = state
+  if (slots.every(slotHasTime)) {
+    return [WIRE_VERSION, title, names, groupSize, anchor, deltas]
+  }
+  const untimed = slots.map((slot) => (slotHasTime(slot) ? '0' : '1')).join('')
+  return [WIRE_VERSION, title, names, groupSize, anchor, deltas, untimed]
 }
 
 /** Never throws — returns null for anything that is not a well-formed tuple. */
 export function fromTuple(tuple: unknown): RotationState | null {
   if (!Array.isArray(tuple)) return null
-  const [version, title, names, groupSize, anchor, deltas] = tuple as unknown[]
+  const [version, title, names, groupSize, anchor, deltas, untimed] = tuple as unknown[]
   if (version !== WIRE_VERSION) return null
   if (typeof anchor !== 'number' && anchor !== null) return null
   if (!Array.isArray(deltas)) return null
   if (deltas.length + 1 > MAX_SLOTS) return null
+  if (untimed !== undefined && (typeof untimed !== 'string' || !UNTIMED_RE.test(untimed))) {
+    return null
+  }
 
   const slots: string[] = []
   if (typeof anchor === 'number') {
@@ -123,6 +144,17 @@ export function fromTuple(tuple: unknown): RotationState | null {
     }
   } else if (deltas.length > 0) {
     return null
+  }
+
+  if (typeof untimed === 'string') {
+    if (untimed.length !== slots.length) return null
+    for (let i = 0; i < slots.length; i++) {
+      if (untimed[i] === '1') {
+        // A date-only slot is encoded as midnight; anything else is a corrupted link.
+        if (!slots[i]!.endsWith('T00:00')) return null
+        slots[i] = slots[i]!.slice(0, 10)
+      }
+    }
   }
 
   return validate({ v: WIRE_VERSION, title, names, slots, groupSize })

@@ -52,15 +52,20 @@ export default function SlotList({ slots, onSlotsChange }: Props) {
                   if (next) replace(index, next)
                 }}
               />
-              <input
-                type="time"
-                value={slotTime(slot)}
-                aria-label={`Time for ${formatSlot(slot)}`}
-                onChange={(event) => {
-                  const next = slotFromInputs(slotDate(slot), event.target.value)
-                  if (next) replace(index, next)
-                }}
-              />
+              {/* A date-only slot has no time to edit; an empty span keeps the grid. */}
+              {slotTime(slot) === null ? (
+                <span aria-hidden="true" />
+              ) : (
+                <input
+                  type="time"
+                  value={slotTime(slot) ?? ''}
+                  aria-label={`Time for ${formatSlot(slot)}`}
+                  onChange={(event) => {
+                    const next = slotFromInputs(slotDate(slot), event.target.value)
+                    if (next) replace(index, next)
+                  }}
+                />
+              )}
               <button
                 type="button"
                 className="secondary row-delete"

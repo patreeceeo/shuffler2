@@ -62,6 +62,12 @@ describe('gcalLink', () => {
     expect(p.get('text')).toBe('&action=x#frag"><script>')
   })
 
+  it('makes a date-only slot an all-day event ending the next day (exclusive)', () => {
+    expect(toGcalTime('2026-09-21')).toBe('20260921')
+    const p = params(gcalLink({ slot: '2026-12-31', names: ['Ada'], title: '' }))
+    expect(p.get('dates')).toBe('20261231/20270101')
+  })
+
   it('returns null for an invalid slot', () => {
     expect(gcalLink({ slot: 'nope', names: ['Ada'], title: '' })).toBeNull()
   })

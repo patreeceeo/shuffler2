@@ -9,7 +9,10 @@ describe('validate', () => {
   it('rejects malformed slot strings', () => {
     const base = { v: 2, title: '', names: [], groupSize: 1 }
     for (const slot of [
-      '2026-09-21',
+      '2026-09-21T',
+      '2026-09-21T09',
+      '2026-02-30',
+      '2026-9-21',
       '2026-09-21T09:00:00',
       '2026-09-21 09:00',
       '2026-13-01T09:00',
@@ -22,6 +25,12 @@ describe('validate', () => {
     ]) {
       expect(validate({ ...base, slots: [slot] })).toBeNull()
     }
+  })
+
+  it('accepts date-only slots', () => {
+    const base = { v: 2, title: '', names: [], groupSize: 1 }
+    expect(validate({ ...base, slots: ['2026-09-21'] })).not.toBeNull()
+    expect(validate({ ...base, slots: ['2024-02-29'] })).not.toBeNull()
   })
 
   it('accepts leap days in leap years', () => {
@@ -64,6 +73,12 @@ describe('normalizeSlots', () => {
     expect(
       normalizeSlots(['2026-02-01T09:00', '2026-01-01T09:00', '2026-01-01T09:00']),
     ).toEqual(['2026-01-01T09:00', '2026-02-01T09:00'])
+    // A date-only slot sorts just before any timed slot on the same day.
+    expect(normalizeSlots(['2026-01-02', '2026-01-01T09:00', '2026-01-01'])).toEqual([
+      '2026-01-01',
+      '2026-01-01T09:00',
+      '2026-01-02',
+    ])
     expect(
       normalizeSlots(
         Array.from(

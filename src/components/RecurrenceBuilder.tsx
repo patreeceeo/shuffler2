@@ -28,7 +28,10 @@ interface Props {
   slotCount: number
 }
 
-/** Defaults on first load: weekly, the next upcoming Monday, 09:00, 12 occurrences (§5). */
+/**
+ * Defaults on first load: weekly, the next upcoming Monday, 12 occurrences, no time of day
+ * (09:00 once "Include a time of day" is ticked) (§5).
+ */
 function defaultStartDate(): string {
   const today = Temporal.Now.plainDateISO().toString()
   return nextWeekday(today, 1)
@@ -44,7 +47,12 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
     count: useId(),
     manualDate: useId(),
     manualTime: useId(),
+    includeTime: useId(),
   }
+
+  // Off by default: most rotations only care which day it is. When off, generated and
+  // added slots are date-only ("YYYY-MM-DD") rather than pinned to a time nobody chose.
+  const [includeTime, setIncludeTime] = useState(false)
 
   // Named `every`, not `interval`, so its setter does not shadow window.setInterval.
   const [every, setEvery] = useState(1)
@@ -57,7 +65,7 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
   const [manualDate, setManualDate] = useState(defaultStartDate)
   const [manualTime, setManualTime] = useState('09:00')
 
-  const start = slotFromInputs(date, time)
+  const start = slotFromInputs(date, includeTime ? time : null)
   const preview = start
     ? expandRecurrence({
         interval: every,
@@ -67,12 +75,24 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
         count,
       })
     : []
-  const manualSlot = slotFromInputs(manualDate, manualTime)
+  const manualSlot = slotFromInputs(manualDate, includeTime ? manualTime : null)
   const remaining = MAX_SLOTS - slotCount
 
   return (
     <section aria-labelledby="when-heading">
       <h2 id="when-heading">When</h2>
+
+      <label htmlFor={ids.includeTime} className="include-time">
+        <input
+          id={ids.includeTime}
+          type="checkbox"
+          checked={includeTime}
+          onChange={(event) => {
+            setIncludeTime(event.target.checked)
+          }}
+        />
+        Include a time of day
+      </label>
 
       <div className="sentence">
         <span>every</span>
@@ -123,18 +143,22 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
           </>
         )}
 
-        <span>at</span>
-        <label htmlFor={ids.time} className="visually-hidden">
-          Time of day
-        </label>
-        <input
-          id={ids.time}
-          type="time"
-          value={time}
-          onChange={(event) => {
-            setTime(event.target.value)
-          }}
-        />
+        {includeTime && (
+          <>
+            <span>at</span>
+            <label htmlFor={ids.time} className="visually-hidden">
+              Time of day
+            </label>
+            <input
+              id={ids.time}
+              type="time"
+              value={time}
+              onChange={(event) => {
+                setTime(event.target.value)
+              }}
+            />
+          </>
+        )}
 
         <span>starting</span>
         <label htmlFor={ids.date} className="visually-hidden">
@@ -174,7 +198,9 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
       </button>
       <p className="hint">
         {preview.length === 0
-          ? 'Pick a valid start date and time.'
+          ? includeTime
+            ? 'Pick a valid start date and time.'
+            : 'Pick a valid start date.'
           : `Adds ${String(preview.length)} date${preview.length === 1 ? '' : 's'}, starting ${preview[0] ?? ''}. Existing dates are kept.`}
       </p>
 
@@ -192,17 +218,21 @@ export default function RecurrenceBuilder({ onGenerate, onAddSlot, slotCount }: 
             setManualDate(event.target.value)
           }}
         />
-        <label htmlFor={ids.manualTime} className="visually-hidden">
-          Single time
-        </label>
-        <input
-          id={ids.manualTime}
-          type="time"
-          value={manualTime}
-          onChange={(event) => {
-            setManualTime(event.target.value)
-          }}
-        />
+        {includeTime && (
+          <>
+            <label htmlFor={ids.manualTime} className="visually-hidden">
+              Single time
+            </label>
+            <input
+              id={ids.manualTime}
+              type="time"
+              value={manualTime}
+              onChange={(event) => {
+                setManualTime(event.target.value)
+              }}
+            />
+          </>
+        )}
         <button
           type="button"
           className="secondary"

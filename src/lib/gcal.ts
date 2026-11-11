@@ -1,4 +1,4 @@
-import type { Slot } from '../state/schema'
+import { slotHasTime, type Slot } from '../state/schema'
 import { parseSlot, toSlot } from './dates'
 
 /**
@@ -15,9 +15,13 @@ const TEMPLATE_URL = 'https://calendar.google.com/calendar/render'
 /** Slots have no end time; each calendar event is given this length. */
 export const EVENT_MINUTES = 60
 
-/** "2026-09-21T09:00" -> "20260921T090000", the compact form Google's `dates` expects. */
+/**
+ * "2026-09-21T09:00" -> "20260921T090000", the compact form Google's `dates` expects.
+ * A date-only "2026-09-21" -> "20260921", which Google reads as an all-day date.
+ */
 export function toGcalTime(slot: Slot): string {
-  return `${slot.replace(/[-:]/g, '')}00`
+  const compact = slot.replace(/[-:]/g, '')
+  return slotHasTime(slot) ? `${compact}00` : compact
 }
 
 export interface GcalEvent {
@@ -31,13 +35,17 @@ export interface GcalEvent {
 
 /**
  * The template link for one assignment, or null if the slot is not a real date-time.
+ * A date-only slot becomes an all-day event; Google's end date for those is exclusive,
+ * so it is the following day.
  * Names and title come from an untrusted link, but they only ever go through
  * URLSearchParams into a fixed https origin, so they cannot change where the link points.
  */
 export function gcalLink({ slot, names, title, url = '' }: GcalEvent): string | null {
   const start = parseSlot(slot)
   if (start === null) return null
-  const end = toSlot(start.add({ minutes: EVENT_MINUTES }))
+  const end = slotHasTime(slot)
+    ? toSlot(start.add({ minutes: EVENT_MINUTES }))
+    : toSlot(start.add({ days: 1 }), false)
   const who = names.join(', ')
   const text = title.trim().length > 0 ? `${title.trim()}: ${who}` : who
   const params = new URLSearchParams({

@@ -209,4 +209,39 @@ describe('defaults for the builder', () => {
     expect(slotFromInputs('2026-09-21', '9:5')).toBe('2026-09-21T09:05')
     expect(slotFromInputs('nope', '09:00')).toBeNull()
   })
+
+  it('slotFromInputs builds a date-only slot when there is no time', () => {
+    expect(slotFromInputs('2026-09-21', null)).toBe('2026-09-21')
+    expect(slotFromInputs('2026-02-30', null)).toBeNull()
+    expect(slotFromInputs('nope', null)).toBeNull()
+  })
+})
+
+describe('date-only slots', () => {
+  it('expands a recurrence into date-only slots', () => {
+    expect(
+      expandRecurrence({
+        interval: 1,
+        unit: 'week',
+        weekday: 1,
+        start: '2026-09-17',
+        count: 3,
+      }),
+    ).toEqual(['2026-09-21', '2026-09-28', '2026-10-05'])
+    expect(
+      expandRecurrence({ interval: 1, unit: 'month', weekday: null, start: '2026-01-31', count: 2 }),
+    ).toEqual(['2026-01-31', '2026-02-28'])
+  })
+
+  it('addUnits keeps a date-only slot date-only', () => {
+    expect(addUnits('2026-09-21', 1, 'day')).toBe('2026-09-22')
+  })
+
+  it('formats with no time', () => {
+    const text = formatSlot('2026-09-21')
+    expect(text).toMatch(/Mon/)
+    expect(text).not.toMatch(/:/)
+    expect(formatSlotTime('2026-09-21')).toBe('')
+    expect(formatSlotDate('2026-09-21')).toContain('2026')
+  })
 })

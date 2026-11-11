@@ -45,11 +45,16 @@ export default function Help() {
 
       <h3>Dates</h3>
       <p>
-        Build a recurring series — every week on a Tuesday at 09:00, say — and press{' '}
+        Build a recurring series — every week on a Tuesday, say — and press{' '}
         <strong>Generate</strong>. Generating <em>adds</em> to the list and skips
         duplicates; it never wipes dates you already have. You can also add single dates
         one at a time, and edit or delete any of them. The list always stays in
         chronological order.
+      </p>
+      <p>
+        Dates have no time of day unless you tick <strong>Include a time of day</strong>
+        {' '}— leave it off when you only care which day it is. Untimed dates become
+        all-day events in Google Calendar.
       </p>
 
       <h3>Adding turns to your calendar</h3>

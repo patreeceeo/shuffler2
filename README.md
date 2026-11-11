@@ -66,7 +66,7 @@ src/
     Toolbar.tsx             title, Shuffle, Reset
     ScheduleTable.tsx       the result: dates, who, +gcal link, per-person tally
     NameList.tsx            Names tab: edit, paste, drag-reorder, people per slot
-    RecurrenceBuilder.tsx   Dates tab: "every N weeks on Monday at 09:00…" + single dates
+    RecurrenceBuilder.tsx   Dates tab: "every N weeks on Monday [at 09:00]…" + single dates
     SlotList.tsx            Dates tab: edit/delete individual dates
     ShareBar.tsx            Share tab: link, copy, length warning, copy as text
     SlackPanel.tsx          Slack tab: `/remind` commands to paste
@@ -92,7 +92,8 @@ one stops decoding, old shared links have broken.
 - **Recurrence uses calendar arithmetic** (`Temporal.PlainDateTime.prototype.add`), never
   millisecond addition, or it drifts an hour twice a year.
 - **Times are floating wall-clock** (`"YYYY-MM-DDTHH:mm"`, no timezone). 9:00 means 9:00
-  to everyone who opens the link. Don't introduce `Date` into slot handling.
+  to everyone who opens the link. Don't introduce `Date` into slot handling. A slot may
+  also be a bare `"YYYY-MM-DD"` (no time chosen); check `slotHasTime` before showing a time.
 - **`decode()` must never throw.** It is `safeParse` over untrusted input; a bad link
   yields `null` and the app shows a "that link looked corrupted" notice.
 - **The wire format is append-only.** Never renumber or reorder tuple fields in

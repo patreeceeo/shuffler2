@@ -1,4 +1,5 @@
 import type { Schedule } from './schedule'
+import { slotHasTime } from '../state/schema'
 import { parseSlot, toSlot } from './dates'
 
 /**
@@ -31,12 +32,19 @@ export const MAX_HOURS_BEFORE = 168
  * "2 hours before 2026-01-01T01:00" is 2025-12-31T23:00, and only calendar arithmetic
  * gets that right. The value stays a floating wall-clock string throughout, so no
  * timezone is introduced (PLAN §3.5).
+ *
+ * A date-only slot has no time to count back from, so it moves back in whole days only:
+ * 1-23 hours stays on the day, 24-47 is the day before, and so on.
  */
 export function shiftEarlier(slot: string, hours: number): string {
   if (!Number.isFinite(hours) || hours <= 0) return slot
   const parsed = parseSlot(slot)
   if (parsed === null) return slot
-  return toSlot(parsed.subtract({ hours: Math.min(Math.floor(hours), MAX_HOURS_BEFORE) }))
+  const capped = Math.min(Math.floor(hours), MAX_HOURS_BEFORE)
+  if (!slotHasTime(slot)) {
+    return toSlot(parsed.subtract({ days: Math.floor(capped / 24) }), false)
+  }
+  return toSlot(parsed.subtract({ hours: capped }))
 }
 
 /**
@@ -71,8 +79,16 @@ export function normalizeChannel(raw: string): string {
   return raw.trim().replace(/^#+/, '').replace(/\s+/g, '-')
 }
 
-/** "2026-09-21T09:00" -> "9/21/2026 at 9:00am", Slack's documented parsing format. */
+/**
+ * "2026-09-21T09:00" -> "9/21/2026 at 9:00am", Slack's documented parsing format.
+ * A date-only "2026-09-21" -> "9/21/2026"; Slack picks its own default time of day.
+ */
 export function formatWhen(slot: string): string {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(slot)
+  if (dateOnly) {
+    const [, y, mo, d] = dateOnly as unknown as [string, string, string, string]
+    return `${String(Number(mo))}/${String(Number(d))}/${y}`
+  }
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(slot)
   if (!match) return slot
   const [, y, mo, d, h, mi] = match as unknown as [

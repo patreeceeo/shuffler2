@@ -65,6 +65,40 @@ describe('tuple shape', () => {
   it('uses a null anchor and no deltas when there are no slots', () => {
     expect(toTuple(EMPTY_STATE)).toEqual([2, '', [], 1, null, []])
   })
+
+  it('adds no untimed mask when every slot has a time', () => {
+    expect(toTuple(sample)).toHaveLength(6)
+  })
+
+  it('marks date-only slots in a trailing mask', () => {
+    const tuple = toTuple({ ...sample, slots: ['2026-09-21', '2026-09-21T09:00', '2026-09-28'] })
+    expect(tuple[4]).toBe(slotToMinutes('2026-09-21T00:00'))
+    expect(tuple[5]).toEqual([540, 10080 - 540])
+    expect(tuple[6]).toBe('101')
+  })
+})
+
+describe('date-only slots on the wire', () => {
+  it('round-trips a mix of timed and date-only slots', async () => {
+    const mixed: RotationState = {
+      ...sample,
+      slots: ['2026-09-21', '2026-09-21T00:00', '2026-09-21T09:00', '2026-09-28'],
+    }
+    await expect(decode(await encode(mixed))).resolves.toEqual(mixed)
+  })
+
+  it('rejects a malformed mask', () => {
+    const anchor = slotToMinutes('2026-09-21T00:00')
+    expect(fromTuple([2, '', [], 1, anchor, [10080], '1'])).toBeNull()
+    expect(fromTuple([2, '', [], 1, anchor, [10080], '12'])).toBeNull()
+    expect(fromTuple([2, '', [], 1, anchor, [10080], 11])).toBeNull()
+    // A date-only slot must sit on midnight.
+    expect(fromTuple([2, '', [], 1, anchor + 540, [10080], '10'])).toBeNull()
+    expect(fromTuple([2, '', [], 1, anchor, [10080], '11'])?.slots).toEqual([
+      '2026-09-21',
+      '2026-09-28',
+    ])
+  })
 })
 
 describe('encode/decode', () => {

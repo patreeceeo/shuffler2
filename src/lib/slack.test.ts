@@ -32,6 +32,10 @@ describe('formatWhen', () => {
     expect(formatWhen('2026-01-01T12:00')).toBe('1/1/2026 at 12:00pm')
   })
 
+  it('gives just the date for a date-only slot', () => {
+    expect(formatWhen('2026-09-21')).toBe('9/21/2026')
+  })
+
   it('passes anything unparseable straight through rather than inventing a date', () => {
     expect(formatWhen('nonsense')).toBe('nonsense')
   })
@@ -86,6 +90,13 @@ describe('toRemindCommands', () => {
     )
   })
 
+  it('gives date-only slots a date with no time', () => {
+    const s = state({ slots: ['2026-09-21'], names: ['ada'] })
+    expect(toRemindCommands(derive(s), { channel: 'chores', title: 'Dishes' })).toEqual([
+      '/remind #chores @ada your Dishes turn on 9/21/2026! 9/21/2026',
+    ])
+  })
+
   it('returns nothing without a channel or without a rotation', () => {
     const s = state()
     expect(toRemindCommands(derive(s), { channel: '  ', title: 'x' })).toEqual([])
@@ -112,6 +123,12 @@ describe('shiftEarlier', () => {
     expect(shiftEarlier('2026-09-21T09:00', 0)).toBe('2026-09-21T09:00')
     expect(shiftEarlier('2026-09-21T09:00', -5)).toBe('2026-09-21T09:00')
     expect(shiftEarlier('2026-09-21T09:00', Number.NaN)).toBe('2026-09-21T09:00')
+  })
+
+  it('moves a date-only slot back in whole days only', () => {
+    expect(shiftEarlier('2026-09-21', 2)).toBe('2026-09-21')
+    expect(shiftEarlier('2026-09-21', 24)).toBe('2026-09-20')
+    expect(shiftEarlier('2026-03-01', 48)).toBe('2026-02-27')
   })
 
   it('caps absurd lead times instead of walking off the calendar', () => {
