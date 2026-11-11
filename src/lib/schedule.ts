@@ -88,11 +88,18 @@ export function toTextTable(
     lines.push('(no dates or no names yet)')
     return lines.join('\n')
   }
-  const left = schedule.assignments.map((a) => formatSlot(a.slot))
-  const width = Math.max(...left.map((text) => text.length))
-  schedule.assignments.forEach((assignment, i) => {
-    lines.push(`${left[i]!.padEnd(width)}  ${assignment.names.join(', ')}`)
-  })
+  // One column per position (date, then each name in the group), every column padded to
+  // its widest cell so the names line up when pasted somewhere with a monospace font.
+  const rows = schedule.assignments.map((a) => [formatSlot(a.slot), ...a.names])
+  const widths: number[] = []
+  for (const row of rows) {
+    row.forEach((cell, col) => {
+      widths[col] = Math.max(widths[col] ?? 0, cell.length)
+    })
+  }
+  for (const row of rows) {
+    lines.push(row.map((cell, col) => cell.padEnd(widths[col]!)).join('  ').trimEnd())
+  }
   lines.push('')
   if (url.length > 0) lines.push(`made with Shuffler2: ${url}`)
   return lines.join('\n')

@@ -177,6 +177,16 @@ describe('toTextTable', () => {
     expect(text).not.toMatch(/Ada 1/)
   })
 
+  it('aligns each name column across rows', () => {
+    const s = state({
+      names: ['Jack', 'Jill', 'Edward', 'Billy'],
+      slots: ['11 Nov', '12 Nov'],
+      groupSize: 2,
+    })
+    const text = toTextTable(s, derive(s), (slot) => slot)
+    expect(text).toContain('11 Nov  Jack    Jill\n12 Nov  Edward  Billy\n')
+  })
+
   it('says so rather than crashing when there is nothing to show', () => {
     const s = state({ names: [], slots: [] })
     expect(toTextTable(s, derive(s), (slot) => slot)).toContain('no dates or no names')
